@@ -1,0 +1,18 @@
+from __future__ import absolute_import
+
+# flake8: noqa
+
+# import apis into api package
+from swagger_client.api.connections_management_api import ConnectionsManagementApi
+from swagger_client.api.credential_definition_registry_api import CredentialDefinitionRegistryApi
+from swagger_client.api.credential_status_list_api import CredentialStatusListApi
+from swagger_client.api.did_api import DIDApi
+from swagger_client.api.did_registrar_api import DIDRegistrarApi
+from swagger_client.api.events_api import EventsApi
+from swagger_client.api.identity_and_access_management_api import IdentityAndAccessManagementApi
+from swagger_client.api.issue_credentials_protocol_api import IssueCredentialsProtocolApi
+from swagger_client.api.present_proof_api import PresentProofApi
+from swagger_client.api.schema_registry_api import SchemaRegistryApi
+from swagger_client.api.system_api import SystemApi
+from swagger_client.api.verification_api import VerificationApi
+from swagger_client.api.wallet_management_api import WalletManagementApi

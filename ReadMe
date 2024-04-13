@@ -1,0 +1,14 @@
+New users are created with an API key of user.{user_id}
+
+Started prism agent with the following settings:
+
+ADMIN_TOKEN=my-admin-token
+API_KEY_ENABLED=true
+API_KEY_AUTO_PROVISIONING=false
+DEFAULT_WALLET_ENABLED=false
+PRISM_AGENT_VERSION=1.18.0
+PRISM_NODE_VERSION=2.2.1
+PORT=8080
+NETWORK=prism
+VAULT_DEV_ROOT_TOKEN_ID=root
+PG_PORT=5434
