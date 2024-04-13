@@ -20,8 +20,8 @@ client = ApiClient(config)
 
 
 @app.get("/list-users")
-def list_users():
-    client.set_default_header('x-admin-api-key', env['ADMIN_API_KEY'])
+def list_users(x_admin_api_key: str = Header(None)):
+    client.set_default_header('x-admin-api-key', x_admin_api_key)
 
     # List all entities
 
@@ -69,7 +69,6 @@ def create_user(request: CreateUserRequest,  x_admin_api_key: str = Header(None)
     client.set_default_header('apiKey', userApiKey)
 
     didApi = DIDRegistrarApi(client)
-
 
     didRes = didApi.post_did_registrar_dids({"documentTemplate": {"publicKeys": [{"id": "auth-1","purpose": "authentication"}],"services": []}})
 
