@@ -1,5 +1,3 @@
-New users are created with an API key of user.{user_id}
-
 Started prism agent with the following settings:
 
 ADMIN_TOKEN=my-admin-token
