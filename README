@@ -1,4 +1,4 @@
-Started prism agent with the following settings:
+1. Start prism agent with the following settings:
 
 ADMIN_TOKEN=my-admin-token
 API_KEY_ENABLED=true
@@ -10,3 +10,7 @@ PORT=8080
 NETWORK=prism
 VAULT_DEV_ROOT_TOKEN_ID=root
 PG_PORT=5434
+
+2. Create env file (see .env-example)
+
+3. Run docker-compose up
