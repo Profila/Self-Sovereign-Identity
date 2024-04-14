@@ -173,7 +173,7 @@ def list_user_dids(user_api_key: str = Header(None)):
 # User ID:
 # 8bd47798-f4e0-423a-a83c-af938b89b6e5
 
-@app.get("/user/establish-issuer-connection/")
+@app.get("/issuer/establish-issuer-connection/")
 def establish_connection_to_issuer(user_api_key: str = Header(None), issuer_api_key: str = Header(None)):
     client.set_default_header('apiKey', issuer_api_key)
 
@@ -198,7 +198,7 @@ def establish_connection_to_issuer(user_api_key: str = Header(None), issuer_api_
 
 # For Connection Testing
 # ID: ab11efb0-1955-4b49-a90c-f72ccc45e412
-@app.get("/user/check-connection/{id}")
+@app.get("/issuer/check-connection/{id}")
 def check_connection(id: str = Path(..., description="Connection ID"), issuer_api_key: str = Header(None)):
     client.set_default_header('apiKey', issuer_api_key)
 
