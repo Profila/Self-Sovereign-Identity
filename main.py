@@ -173,8 +173,8 @@ def list_user_dids(user_api_key: str = Header(None)):
 # User ID:
 # 8bd47798-f4e0-423a-a83c-af938b89b6e5
 
-@app.get("/issuer/establish-issuer-connection/")
-def establish_connection_to_issuer(user_api_key: str = Header(None), issuer_api_key: str = Header(None)):
+@app.get("/issuer/establish-issuer-to-user-connection/")
+def establish_connection_issuer_to_user(user_api_key: str = Header(None), issuer_api_key: str = Header(None)):
     client.set_default_header('apiKey', issuer_api_key)
 
     # Establish a didcomm connection
@@ -256,15 +256,13 @@ def check_connection(id: str = Path(..., description="Connection ID"), issuer_ap
 #     "self": "/schema-registry/schemas/3f9a5c9e-2743-3e4f-bbdb-861ed8b2198a"
 # }
 
-@app.get("/admin/get-schema/")
-def get_schema(x_admin_api_key: str = Header(None)):
-    client.set_default_header('apiKey', x_admin_api_key)
+@app.get("/get-schema/")
+def get_schema():
 
-    # Check connection status
+    # Get profile schema
 
     schemaApi = SchemaRegistryApi(client)
 
-    # Issuer Check Connection Status
     res = schemaApi.get_schema_by_id("06407e4f-0826-303b-b101-6fb4276bd467")
 
     return res
