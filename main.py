@@ -12,7 +12,28 @@ from swagger_client.configuration import Configuration
 from models import *
 from utils import generate_api_key
 
-app = FastAPI()
+
+tags_metadata = [
+    {
+        "name": "Admin",
+        "description": "Operations available only to admin users (Requires admin api key)."
+    },
+    {
+        "name": "User",
+        "description": "Endpoints accessible by regular users (Requires user api key)."
+    },
+    {
+        "name": "Issuer",
+        "description": "APIs for issuer interactions. (Requires issuer api key)."
+    },
+    {
+        "name": "General",
+        "description": "APIs for general interactions. (Requires no api key)."
+    },
+
+]
+
+app = FastAPI(openapi_tags=tags_metadata)
 
 # Create a Configuration object with a new API base URL
 config = Configuration()
@@ -21,7 +42,7 @@ config.host = env['BASE_URL']
 client = ApiClient(config)
 
 
-@app.get("/admin/list-users")
+@app.get("/admin/list-users", tags=["Admin"])
 def list_users(x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -34,7 +55,7 @@ def list_users(x_admin_api_key: str = Header(None)):
     return res
 
 
-@app.get("/admin/list-wallets")
+@app.get("/admin/list-wallets", tags=["Admin"])
 def list_wallets(x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -45,7 +66,7 @@ def list_wallets(x_admin_api_key: str = Header(None)):
     return res
 
 
-@app.post("/admin/create-user")
+@app.post("/admin/create-user", tags=["Admin"])
 def create_user(request: CreateUserRequest,  x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -80,7 +101,7 @@ def create_user(request: CreateUserRequest,  x_admin_api_key: str = Header(None)
 
     return response
 
-@app.post("/admin/create-issuer")
+@app.post("/admin/create-issuer", tags=["Admin"])
 def create_issuer(request: CreateUserRequest,  x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -116,7 +137,7 @@ def create_issuer(request: CreateUserRequest,  x_admin_api_key: str = Header(Non
     return response
 
 
-@app.get("/admin/resolve-did/{did}")
+@app.get("/admin/resolve-did/{did}", tags=["Admin"])
 def resolve_did(did: str = Path(..., description="The DID to resolve"), x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -129,7 +150,7 @@ def resolve_did(did: str = Path(..., description="The DID to resolve"), x_admin_
     return res
 
 
-@app.get("/admin/user-details/{id}")
+@app.get("/admin/user-details/{id}", tags=["Admin"])
 def user_details(id: str = Path(..., description="User ID"), x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -141,7 +162,7 @@ def user_details(id: str = Path(..., description="User ID"), x_admin_api_key: st
 
     return res
 
-@app.get("/user/list-dids/")
+@app.get("/user/list-dids/", tags=["User"])
 def list_user_dids(user_api_key: str = Header(None)):
     client.set_default_header('apiKey', user_api_key)
 
@@ -173,7 +194,7 @@ def list_user_dids(user_api_key: str = Header(None)):
 # User ID:
 # 8bd47798-f4e0-423a-a83c-af938b89b6e5
 
-@app.get("/issuer/establish-issuer-to-user-connection/")
+@app.get("/issuer/establish-issuer-to-user-connection/", tags=["Issuer"])
 def establish_connection_issuer_to_user(user_api_key: str = Header(None), issuer_api_key: str = Header(None)):
     client.set_default_header('apiKey', issuer_api_key)
 
@@ -198,7 +219,7 @@ def establish_connection_issuer_to_user(user_api_key: str = Header(None), issuer
 
 # For Connection Testing
 # ID: ab11efb0-1955-4b49-a90c-f72ccc45e412
-@app.get("/issuer/check-connection/{id}")
+@app.get("/issuer/check-connection/{id}", tags=["Issuer"])
 def check_connection(id: str = Path(..., description="Connection ID"), issuer_api_key: str = Header(None)):
     client.set_default_header('apiKey', issuer_api_key)
 
@@ -256,7 +277,7 @@ def check_connection(id: str = Path(..., description="Connection ID"), issuer_ap
 #     "self": "/schema-registry/schemas/3f9a5c9e-2743-3e4f-bbdb-861ed8b2198a"
 # }
 
-@app.get("/get-schema/")
+@app.get("/get-schema/", tags=["General"])
 def get_schema():
 
     # Get profile schema
