@@ -8,6 +8,7 @@ from swagger_client.api.did_registrar_api import DIDRegistrarApi
 from swagger_client.api.did_api import DIDApi
 from swagger_client.api.connections_management_api import ConnectionsManagementApi
 from swagger_client.api.schema_registry_api import SchemaRegistryApi
+from swagger_client.api.issue_credentials_protocol_api import IssueCredentialsProtocolApi
 from swagger_client.configuration import Configuration
 from models import *
 from utils import generate_api_key
@@ -16,7 +17,7 @@ from utils import generate_api_key
 tags_metadata = [
     {
         "name": "Admin",
-        "description": "Operations available only to admin users (Requires admin api key)."
+        "description": "Endpoints available only to admin users (Requires admin api key)."
     },
     {
         "name": "User",
@@ -24,11 +25,11 @@ tags_metadata = [
     },
     {
         "name": "Issuer",
-        "description": "APIs for issuer interactions. (Requires issuer api key)."
+        "description": "Endpoints for issuer interactions. (Requires issuer api key)."
     },
     {
         "name": "General",
-        "description": "APIs for general interactions. (Requires no api key)."
+        "description": "Endpoints for general interactions. (Requires no api key)."
     },
 
 ]
@@ -38,6 +39,7 @@ app = FastAPI(openapi_tags=tags_metadata, title="Profila Prism API", description
 # Create a Configuration object with a new Prism API URL
 config = Configuration()
 config.host = env['PRISM_URL']
+hostAddress = env['HOST_ADDRESS']
 
 client = ApiClient(config)
 
@@ -232,58 +234,33 @@ def check_connection(id: str = Path(..., description="Connection ID"), issuer_ap
 
     return res
 
+@app.post("/issuer/issue-credential", tags=["Issuer"])
+def issue_credential(request: CredentialOfferRequest, user_api_key: str = Header(None), issuer_api_key: str = Header(None)):
+    client.set_default_header('apiKey', issuer_api_key)
 
-# Profile Schema:
+    # Create Credential Offer
 
-# {
-#     "guid": "3f9a5c9e-2743-3e4f-bbdb-861ed8b2198a",
-#     "id": "39f8f184-b888-490a-91ce-d042e1d622e5",
-#     "longId": "did:prism:7ee249c59b514692080bb9594f73660cf1b646857004b5b6dbd7e9f0b4e4a6ae:CnsKeRI6CgZhdXRoLTEQAkouCglzZWNwMjU2azESIQIso2BYlVFFre5z2RuSvhMC69_rLsB-v48JxlA_XesimxI7CgdtYXN0ZXIwEAFKLgoJc2VjcDI1NmsxEiECSV3EYmK50xxA6lKRdnq364EN3ccFCCoUE9O0z_uu9sQ/39f8f184-b888-490a-91ce-d042e1d622e5?version=1.0.0",
-#     "name": "user-profile",
-#     "version": "1.0.0",
-#     "tags": [
-#         "user",
-#         "profile"
-#     ],
-#     "description": "User Profile Schema",
-#     "type": "https://w3c-ccg.github.io/vc-json-schemas/schema/2.0/schema.json",
-#     "schema": {
-#         "$id": "https://profila.com/user-profile-1.0.0",
-#         "$schema": "https://json-schema.org/draft/2020-12/schema",
-#         "description": "Driving License",
-#         "type": "object",
-#         "properties": {
-#             "emailAddress": {
-#                 "type": "string",
-#                 "format": "email"
-#             },
-#             "givenName": {
-#                 "type": "string"
-#             },
-#             "familyName": {
-#                 "type": "string"
-#             }
-#         },
-#         "required": [
-#             "emailAddress",
-#             "familyName",
-#             "givenName"
-#         ],
-#         "additionalProperties": true
-#     },
-#     "author": "did:prism:7ee249c59b514692080bb9594f73660cf1b646857004b5b6dbd7e9f0b4e4a6ae:CnsKeRI6CgZhdXRoLTEQAkouCglzZWNwMjU2azESIQIso2BYlVFFre5z2RuSvhMC69_rLsB-v48JxlA_XesimxI7CgdtYXN0ZXIwEAFKLgoJc2VjcDI1NmsxEiECSV3EYmK50xxA6lKRdnq364EN3ccFCCoUE9O0z_uu9sQ",
-#     "authored": "2024-04-14T08:59:58.292439Z",
-#     "kind": "CredentialSchema",
-#     "self": "/schema-registry/schemas/3f9a5c9e-2743-3e4f-bbdb-861ed8b2198a"
-# }
+    issueCredApi = IssueCredentialsProtocolApi(client)
 
-@app.get("/get-schema/", tags=["General"])
+    offerRes = issueCredApi.create_credential_offer({"validityPeriod": 86400, # One day
+                                                     "schemaId": "http://"+hostAddress+":8080/prism-agent/schema-registry/schemas/fa313f8f-0c93-35d2-b65d-364e656bd9cf",
+                                                     "credentialDefinitionId": "39790594-d09d-3865-b2a3-d0e8ea6ffa77",
+                                                     "issuingDID": request.issuerDid,
+                                                     "credential_format": "AnonCreds",
+                                                     "claims": {"email": request.email, "name": request.name, "surname": request.surname},
+                                                     "connectionId": request.connectionId,
+                                                     "credentialFormat": "AnonCreds"})
+
+    return offerRes
+
+
+@app.get("/get-profile-schema/", tags=["General"])
 def get_schema():
 
     # Get profile schema
 
     schemaApi = SchemaRegistryApi(client)
 
-    res = schemaApi.get_schema_by_id("06407e4f-0826-303b-b101-6fb4276bd467")
+    res = schemaApi.get_schema_by_id("fa313f8f-0c93-35d2-b65d-364e656bd9cf")
 
     return res
