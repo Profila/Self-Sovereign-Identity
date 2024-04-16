@@ -4,9 +4,10 @@ services:
   web:
     build: .
     command: sh -c "uvicorn main:app --reload --port=8000 --host=0.0.0.0"
-    ports:
-      - "8000:8000"
     volumes:
       - .:/app
     env_file:
       - .env
+    # ports:
+    #   - "8000:8000"
+    network_mode: host

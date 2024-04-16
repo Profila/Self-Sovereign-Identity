@@ -33,11 +33,11 @@ tags_metadata = [
 
 ]
 
-app = FastAPI(openapi_tags=tags_metadata)
+app = FastAPI(openapi_tags=tags_metadata, title="Profila Prism API", description="API for Prism SSI operations", version="0.1.0")
 
-# Create a Configuration object with a new API base URL
+# Create a Configuration object with a new Prism API URL
 config = Configuration()
-config.host = env['BASE_URL']
+config.host = env['PRISM_URL']
 
 client = ApiClient(config)
 
@@ -141,7 +141,7 @@ def create_issuer(request: CreateUserRequest,  x_admin_api_key: str = Header(Non
 def resolve_did(did: str = Path(..., description="The DID to resolve"), x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
-    # List all entities
+    # Resolve a DID
 
     didApi = DIDApi(client)
 
@@ -154,7 +154,7 @@ def resolve_did(did: str = Path(..., description="The DID to resolve"), x_admin_
 def user_details(id: str = Path(..., description="User ID"), x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
-    # List all entities
+    # Show user details
 
     entityApi = IdentityAndAccessManagementApi(client)
 
@@ -166,7 +166,7 @@ def user_details(id: str = Path(..., description="User ID"), x_admin_api_key: st
 def list_user_dids(user_api_key: str = Header(None)):
     client.set_default_header('apiKey', user_api_key)
 
-    # List all entities
+    # List all dids of user
 
     didRegistrar = DIDRegistrarApi(client)
 
