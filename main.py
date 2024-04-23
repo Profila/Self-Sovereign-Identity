@@ -1,5 +1,8 @@
 from fastapi import FastAPI, Header, HTTPException, Path
+from fastapi.responses import JSONResponse
 from os import environ as env
+from pprint import pprint
+import swagger_client
 from swagger_client import ApiClient
 from swagger_client.api.did_api import DIDApi
 from swagger_client.api.wallet_management_api import WalletManagementApi
@@ -10,8 +13,11 @@ from swagger_client.api.connections_management_api import ConnectionsManagementA
 from swagger_client.api.schema_registry_api import SchemaRegistryApi
 from swagger_client.api.issue_credentials_protocol_api import IssueCredentialsProtocolApi
 from swagger_client.configuration import Configuration
+from swagger_client.api.present_proof_api import PresentProofApi
+from swagger_client.rest import ApiException
 from models import *
-from utils import generate_api_key
+from utils import generate_api_key, serialize
+import time
 
 
 tags_metadata = [
@@ -26,6 +32,10 @@ tags_metadata = [
     {
         "name": "Issuer",
         "description": "Endpoints for issuer interactions. (Requires issuer api key)."
+    },
+    {
+        "name": "Brand",
+        "description": "Endpoints for brand interactions. (Requires brand api key)."
     },
     {
         "name": "General",
@@ -43,8 +53,18 @@ hostAddress = env['HOST_ADDRESS']
 
 client = ApiClient(config)
 
+@app.get("/get-profile-schema/", tags=["General"])
+def get_schema():
 
-@app.get("/admin/list-users", tags=["Admin"])
+    # Get profile schema
+
+    schemaApi = SchemaRegistryApi(client)
+
+    res = schemaApi.get_schema_by_id("fa313f8f-0c93-35d2-b65d-364e656bd9cf")
+
+    return res
+
+@app.get("/list-users", tags=["Admin"])
 def list_users(x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -57,7 +77,7 @@ def list_users(x_admin_api_key: str = Header(None)):
     return res
 
 
-@app.get("/admin/list-wallets", tags=["Admin"])
+@app.get("/list-wallets", tags=["Admin"])
 def list_wallets(x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -68,7 +88,7 @@ def list_wallets(x_admin_api_key: str = Header(None)):
     return res
 
 
-@app.post("/admin/create-user", tags=["Admin"])
+@app.post("/create-user", tags=["Admin"])
 def create_user(request: CreateUserRequest,  x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -103,7 +123,7 @@ def create_user(request: CreateUserRequest,  x_admin_api_key: str = Header(None)
 
     return response
 
-@app.post("/admin/create-issuer", tags=["Admin"])
+@app.post("/create-issuer", tags=["Admin"])
 def create_issuer(request: CreateUserRequest,  x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -138,8 +158,43 @@ def create_issuer(request: CreateUserRequest,  x_admin_api_key: str = Header(Non
 
     return response
 
+@app.post("/create-brand", tags=["Admin"])
+def create_brand(request: CreateUserRequest,  x_admin_api_key: str = Header(None)):
+    client.set_default_header('x-admin-api-key', x_admin_api_key)
 
-@app.get("/admin/resolve-did/{did}", tags=["Admin"])
+    # Create a wallet
+    wallet_api = WalletManagementApi(client)
+    walletRes = wallet_api.create_wallet({'name': request.name})
+    print("id")
+    print(walletRes.id)
+
+    # Create an entity linked to the wallet
+    entityApi = IdentityAndAccessManagementApi(client)
+
+    entityRes = entityApi.create_entity({"name": request.name,"walletId": walletRes.id})
+    print("entity")
+    print(entityRes)
+
+    # Provide Auth method for new entity
+    userApiKey = "brand." + generate_api_key()
+    print("User api key")
+    print(userApiKey)
+    entityApi.add_entity_api_key_authentication({"entityId": entityRes.id, "apiKey": userApiKey})
+
+    # Create a DID for the entity
+    client.set_default_header('apiKey', userApiKey)
+
+    didApi = DIDRegistrarApi(client)
+
+    didRes = didApi.post_did_registrar_dids({"documentTemplate": {"publicKeys": [{"id": "auth-1","purpose": "assertionMethod"}],"services": []}})
+
+    # Build response with required info from all requests
+    response = {"userId": entityRes.id, "walletId": walletRes.id, "did":didRes.long_form_did, "userApiKey": userApiKey}
+
+    return response
+
+
+@app.get("/resolve-did/{did}", tags=["Admin"])
 def resolve_did(did: str = Path(..., description="The DID to resolve"), x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -152,7 +207,7 @@ def resolve_did(did: str = Path(..., description="The DID to resolve"), x_admin_
     return res
 
 
-@app.get("/admin/user-details/{id}", tags=["Admin"])
+@app.get("/user-details/{id}", tags=["Admin"])
 def user_details(id: str = Path(..., description="User ID"), x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -164,7 +219,7 @@ def user_details(id: str = Path(..., description="User ID"), x_admin_api_key: st
 
     return res
 
-@app.get("/user/list-dids/", tags=["User"])
+@app.get("/list-dids/", tags=["User"])
 def list_user_dids(user_api_key: str = Header(None)):
     client.set_default_header('apiKey', user_api_key)
 
@@ -176,29 +231,10 @@ def list_user_dids(user_api_key: str = Header(None)):
 
     return res
 
-# For Connection Testing
 
-# Issuer api key:
-# issuer.C'W&|x5X0A_v&g81Fk=D_r~79&B|9(#/
-
-# Issuer did:
-# did:prism:7ee249c59b514692080bb9594f73660cf1b646857004b5b6dbd7e9f0b4e4a6ae:CnsKeRI6CgZhdXRoLTEQAkouCglzZWNwMjU2azESIQIso2BYlVFFre5z2RuSvhMC69_rLsB-v48JxlA_XesimxI7CgdtYXN0ZXIwEAFKLgoJc2VjcDI1NmsxEiECSV3EYmK50xxA6lKRdnq364EN3ccFCCoUE9O0z_uu9sQ
-
-# Issuer ID:
-# 3ee7729e-c682-44d7-97ab-3913899a9807
-
-# User api key:
-# user.Ch.IXJS:Erf}jWF7LKHDYBtq4Na8C0?p
-
-# User did:
-# did:prism:36b17296f475a6ad745ce47e02444387528fd448d50bfc3210b6121679cf5125:CnsKeRI6CgZhdXRoLTEQBEouCglzZWNwMjU2azESIQK0Ey3UOzwYvill4tOqLyKKuPeF8IvG9LeMV9V61Jo6rxI7CgdtYXN0ZXIwEAFKLgoJc2VjcDI1NmsxEiEDTa2hhs_byweaq0no6v4Rg95ygcY51tfu6aSdx-PKAbs
-
-# User ID:
-# 8bd47798-f4e0-423a-a83c-af938b89b6e5
-
-@app.get("/issuer/establish-issuer-to-user-connection/", tags=["Issuer"])
-def establish_connection_issuer_to_user(user_api_key: str = Header(None), issuer_api_key: str = Header(None)):
-    client.set_default_header('apiKey', issuer_api_key)
+@app.get("/establish-connection-to-user/", tags=["Issuer", "Brand"])
+def establish_connection_to_user(requestor_api_key: str = Header(None), user_api_key: str = Header(None)):
+    client.set_default_header('apiKey', requestor_api_key)
 
     # Establish a didcomm connection
 
@@ -214,16 +250,14 @@ def establish_connection_issuer_to_user(user_api_key: str = Header(None), issuer
     acceptConnRes = connectionApi.accept_connection_invitation({"invitation": rawInvitation})
 
     # Isuer Check Connection Status
-    client.set_default_header('apiKey', issuer_api_key)
+    client.set_default_header('apiKey', requestor_api_key)
     checkConnRes = connectionApi.get_connection(createConnRes.thid)
 
     return checkConnRes
 
-# For Connection Testing
-# ID: ab11efb0-1955-4b49-a90c-f72ccc45e412
-@app.get("/issuer/check-connection/{id}", tags=["Issuer"])
-def check_connection(id: str = Path(..., description="Connection ID"), issuer_api_key: str = Header(None)):
-    client.set_default_header('apiKey', issuer_api_key)
+@app.get("/check-connection/{id}", tags=["Issuer", "Brand"])
+def check_connection(id: str = Path(..., description="Connection ID"), requestor_api_key: str = Header(None)):
+    client.set_default_header('apiKey', requestor_api_key)
 
     # Check connection status
 
@@ -234,8 +268,21 @@ def check_connection(id: str = Path(..., description="Connection ID"), issuer_ap
 
     return res
 
-@app.post("/issuer/issue-credential", tags=["Issuer"])
-def issue_credential(request: CredentialOfferRequest, user_api_key: str = Header(None), issuer_api_key: str = Header(None)):
+@app.get("/list-connections/", tags=["Issuer", "Brand"])
+def list_connections(requestor_api_key: str = Header(None)):
+    client.set_default_header('apiKey', requestor_api_key)
+
+    # Check connection status
+
+    connectionApi = ConnectionsManagementApi(client)
+
+    # Issuer Check Connection Status
+    res = connectionApi.get_connections()
+
+    return res
+
+@app.post("/offer-credential", tags=["Issuer"])
+def offer_credential(request: CredentialOfferRequest, user_api_key: str = Header(None), issuer_api_key: str = Header(None)):
     client.set_default_header('apiKey', issuer_api_key)
 
     # Create Credential Offer
@@ -248,19 +295,133 @@ def issue_credential(request: CredentialOfferRequest, user_api_key: str = Header
                                                      "issuingDID": request.issuerDid,
                                                      "credential_format": "AnonCreds",
                                                      "claims": {"email": request.email, "name": request.name, "surname": request.surname},
+                                                     "automaticIssuance": True,
                                                      "connectionId": request.connectionId,
                                                      "credentialFormat": "AnonCreds"})
+    
+    # Record ID: 10c766af-8cea-4a81-8a24-99f9051076a5
 
-    return offerRes
+    issuerOfferRes = issueCredApi.get_credential_record(offerRes.record_id)
 
 
-@app.get("/get-profile-schema/", tags=["General"])
-def get_schema():
+    issuerOfferState = issuerOfferRes.protocol_state
+    retries = 10
+    retryCount = 0
+    while issuerOfferState != "OfferSent" and retryCount < retries:
+        issuerOfferRes = issueCredApi.get_credential_record(offerRes.record_id)
+        issuerOfferState = issuerOfferRes.protocol_state
+        # Sleep for 1 second
+        time.sleep(1)
+        retryCount += 1
 
-    # Get profile schema
+    if issuerOfferState != "OfferSent":
+        return {"error": "Credential offer not sent"}
+    
+    return issuerOfferRes
 
-    schemaApi = SchemaRegistryApi(client)
+@app.get("/list-credential-offers", tags=["User"])
+def list_credential_offers(user_api_key: str = Header(None)):
+    client.set_default_header('apiKey', user_api_key)
 
-    res = schemaApi.get_schema_by_id("fa313f8f-0c93-35d2-b65d-364e656bd9cf")
+    issueCredApi = IssueCredentialsProtocolApi(client)
+    # List Holder Credential Offers
+
+    holderOffersRes = issueCredApi.get_credential_records()
+
+    # Filter out the offers that are not in OfferReceived state
+
+    holderOffers = []
+    for offer in holderOffersRes.contents:
+        if(offer.protocol_state == "OfferReceived"):
+            holderOffers.append(offer)
+
+    # Accept All Credential Offers
+
+    # for offer in holderOffersRes.results:
+    #     if(offer.protocol_state == "OfferReceived"):
+    #         print("Accepting credential offer")
+    #         acceptCredRes = issueCredApi.accept_credential_offer(body={}, record_id=offer.record_id)
+
+    # acceptCredRes = issueCredApi.accept_credential_offer(body={}, record_id="e2d8d813-7bbb-48c6-9b3c-ef03d75b231f")#holderOfferRes.record_id)
+
+    return holderOffers
+
+@app.get("/accept-credential-offer/{id}", tags=["User"])
+def accept_credential_offer(id: str = Path(..., description="Offer ID") , user_api_key: str = Header(None)):
+    client.set_default_header('apiKey', user_api_key)
+
+    issueCredApi = IssueCredentialsProtocolApi(client)
+
+    # Accept Credential Offer
+
+    acceptCredRes = issueCredApi.accept_credential_offer(body={}, record_id=id)
+
+    return acceptCredRes
+
+@app.get("/get-credential/{id}", tags=["User"])
+def get_credential(id: str = Path(..., description="Credential ID") , user_api_key: str = Header(None)):
+    client.set_default_header('apiKey', user_api_key)
+
+    issueCredApi = IssueCredentialsProtocolApi(client)
+
+    # Get Credential Details
+
+    credentialRes = issueCredApi.get_credential_record(id)
+
+    return credentialRes
+
+
+
+@app.get("/list-credentials/", tags=["User"])
+def list_credentials(user_api_key: str = Header(None)):
+    client.set_default_header('apiKey', user_api_key)
+
+    issueCredApi = IssueCredentialsProtocolApi(client)
+
+    # List Holder Credentials
+
+    res = issueCredApi.get_credential_records()
 
     return res
+
+
+@app.get("/create-presentation-request/", tags=["Brand"])
+def create_presentation_request(brand_api_key: str = Header(None)):
+    client.set_default_header('apiKey', brand_api_key)
+
+    presentationApi = PresentProofApi(client)
+
+    # Create Presentation Request
+
+    # proof_request = RequestPresentationInput.from_dict(data)
+    # verifier_proof_request: Response[RequestPresentationInput] = request_presentation.sync(client=verifier_client, json_body=proof_request)
+
+    proofData = swagger_client.RequestPresentationInput(connection_id="2f0748f7-28b8-4077-bbab-5e7330db2a81", 
+                                                        options={"challenge": "11c91493-01b3-4c4d-ac36-b336bab5bddf", 
+                                                                 "domain": "https://example-verifier.com"}, 
+                                                        proofs=[{"schemaId":"https://schema.org/Person", 
+                                                                 "trustIssuers": ["did:prism:298fb0fc137e3f23608a9ab96fe2c5d86e65de7ad076f376b6c131a4e49e36a9"]}],
+                                                        )
+
+
+    res = presentationApi.request_presentation(proofData)
+
+    return res
+
+@app.get("/present-credential/", tags=["User"])
+def present_credential(user_api_key: str = Header(None)):
+    client.set_default_header('apiKey', user_api_key)
+
+    presentationApi = PresentProofApi(client)
+
+    # Respond to Presentation Request
+
+    body = swagger_client.RequestPresentationAction(action="request-accept", proof_id=["e660c3e3-259f-4783-92aa-43ee35ead5e0"])
+    
+    try:
+        res = presentationApi.update_presentation(body=body, presentation_id="0844770a-2b70-402e-8972-34bacc260fe3")
+        pprint(serialize(res))
+        return JSONResponse(content=serialize(res), status_code=200)
+    except ApiException as e:
+        print("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
