@@ -289,15 +289,29 @@ def offer_credential(request: CredentialOfferRequest, user_api_key: str = Header
 
     issueCredApi = IssueCredentialsProtocolApi(client)
 
+    # {
+    #     "claims": {
+    #     "emailAddress": "alice@wonderland.com",
+    #     "givenName": "Alice",
+    #     "familyName": "Wonderland",
+    #     "dateOfIssuance": "2020-11-13T20:20:39+00:00",
+    #     "drivingLicenseID": "12345",
+    #     "drivingClass": 3
+    #     },
+    #     "credentialFormat": "JWT",
+    #     "issuingDID": "did:prism:9f847f8bbb66c112f71d08ab39930d468ccbfe1e0e1d002be53d46c431212c26",
+    #     "connectionId": "9d075518-f97e-4f11-9d10-d7348a7a0fda",
+    #     "schemaId": "http://localhost:8080/prism-agent/schema-registry/schemas/3f86a73f-5b78-39c7-af77-0c16123fa9c2"
+    # }
+
+    # TODO Elmer: Use model
     offerRes = issueCredApi.create_credential_offer({"validityPeriod": 86400, # One day
-                                                     "schemaId": "http://"+hostAddress+":8080/prism-agent/schema-registry/schemas/fa313f8f-0c93-35d2-b65d-364e656bd9cf",
-                                                     "credentialDefinitionId": "39790594-d09d-3865-b2a3-d0e8ea6ffa77",
+                                                     "schemaId": "http://"+hostAddress+":8080/prism-agent/schema-registry/schemas/c02e2e89-b7fe-3c78-a4e3-3bc6636b5469",
                                                      "issuingDID": request.issuerDid,
-                                                     "credential_format": "AnonCreds",
-                                                     "claims": {"email": request.email, "name": request.name, "surname": request.surname},
+                                                     "claims": {"emailAddress": request.email, "givenName": request.name, "familyName": request.surname},
                                                      "automaticIssuance": True,
                                                      "connectionId": request.connectionId,
-                                                     "credentialFormat": "AnonCreds"})
+                                                     "credentialFormat": "JWT"})
     
     # Record ID: 10c766af-8cea-4a81-8a24-99f9051076a5
 
@@ -346,15 +360,15 @@ def list_credential_offers(user_api_key: str = Header(None)):
 
     return holderOffers
 
-@app.get("/accept-credential-offer/{id}", tags=["User"])
-def accept_credential_offer(id: str = Path(..., description="Offer ID") , user_api_key: str = Header(None)):
+@app.post("/accept-credential-offer/{id}", tags=["User"])
+def accept_credential_offer(subjectId: str, id: str = Path(..., description="Offer ID") , user_api_key: str = Header(None)):
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
 
     # Accept Credential Offer
 
-    acceptCredRes = issueCredApi.accept_credential_offer(body={}, record_id=id)
+    acceptCredRes = issueCredApi.accept_credential_offer(body={"subjectId": subjectId}, record_id=id)
 
     return acceptCredRes
 
@@ -395,7 +409,7 @@ def create_presentation_request(brand_api_key: str = Header(None)):
 
     # proof_request = RequestPresentationInput.from_dict(data)
     # verifier_proof_request: Response[RequestPresentationInput] = request_presentation.sync(client=verifier_client, json_body=proof_request)
-
+    
     proofData = swagger_client.RequestPresentationInput(connection_id="2f0748f7-28b8-4077-bbab-5e7330db2a81", 
                                                         options={"challenge": "11c91493-01b3-4c4d-ac36-b336bab5bddf", 
                                                                  "domain": "https://example-verifier.com"}, 
