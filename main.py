@@ -368,7 +368,7 @@ def accept_credential_offer(subjectId: str, id: str = Path(..., description="Off
 
     # Accept Credential Offer
 
-    acceptCredRes = issueCredApi.accept_credential_offer(body={"subjectId": subjectId}, record_id=id)
+    acceptCredRes = issueCredApi.accept_credential_offer(body={"subjectId": subjectId}, record_id=id, )
 
     return acceptCredRes
 
@@ -410,11 +410,17 @@ def create_presentation_request(brand_api_key: str = Header(None)):
     # proof_request = RequestPresentationInput.from_dict(data)
     # verifier_proof_request: Response[RequestPresentationInput] = request_presentation.sync(client=verifier_client, json_body=proof_request)
     
-    proofData = swagger_client.RequestPresentationInput(connection_id="2f0748f7-28b8-4077-bbab-5e7330db2a81", 
+    # proofData = swagger_client.RequestPresentationInput(connection_id="21ce6a37-122c-426d-b10c-401965942f1b", 
+    #                                                     options={"challenge": "11c91493-01b3-4c4d-ac36-b336bab5bddf", 
+    #                                                              "domain": "https://example-verifier.com"}, 
+    #                                                     proofs=[],
+    #                                                     credential_format= "JWT"
+    #                                                     )
+    proofData = swagger_client.RequestPresentationInput(connection_id="21ce6a37-122c-426d-b10c-401965942f1b", 
                                                         options={"challenge": "11c91493-01b3-4c4d-ac36-b336bab5bddf", 
                                                                  "domain": "https://example-verifier.com"}, 
                                                         proofs=[{"schemaId":"https://schema.org/Person", 
-                                                                 "trustIssuers": ["did:prism:298fb0fc137e3f23608a9ab96fe2c5d86e65de7ad076f376b6c131a4e49e36a9"]}],
+                                                                 "trustIssuers": ["did:prism:cc523481a6540d7c1674a5ecf94ad482619405664cc48d7b14620cf2ef097c12"]}],
                                                         )
 
 
@@ -430,10 +436,27 @@ def present_credential(user_api_key: str = Header(None)):
 
     # Respond to Presentation Request
 
-    body = swagger_client.RequestPresentationAction(action="request-accept", proof_id=["e660c3e3-259f-4783-92aa-43ee35ead5e0"])
+    body = swagger_client.RequestPresentationAction(action="request-accept", proof_id=["10781032-d1f0-423e-b050-30d510cdbe51"])
     
     try:
-        res = presentationApi.update_presentation(body=body, presentation_id="0844770a-2b70-402e-8972-34bacc260fe3")
+        res = presentationApi.update_presentation(body=body, presentation_id="291cbbab-8e32-49c5-b2e8-423e3590ac08")
+        pprint(serialize(res))
+        return JSONResponse(content=serialize(res), status_code=200)
+    except ApiException as e:
+        print("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
+
+
+@app.get("/accept-presentation-response/", tags=["Brand"])
+def accept_presentation_response(brand_api_key: str = Header(None)):
+    client.set_default_header('apiKey', brand_api_key)
+
+    presentationApi = PresentProofApi(client)
+
+    body = swagger_client.RequestPresentationAction(action="presentation-accept")
+
+    try:
+        res = presentationApi.update_presentation(body=body, presentation_id="4af6b5fb-b8f9-4197-96d2-6b155d5daa39")
         pprint(serialize(res))
         return JSONResponse(content=serialize(res), status_code=200)
     except ApiException as e:
