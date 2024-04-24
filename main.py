@@ -14,7 +14,6 @@ from swagger_client.api.schema_registry_api import SchemaRegistryApi
 from swagger_client.api.issue_credentials_protocol_api import IssueCredentialsProtocolApi
 from swagger_client.configuration import Configuration
 from swagger_client.api.present_proof_api import PresentProofApi
-from swagger_client.models import CredentialSchemaInput
 from swagger_client.rest import ApiException
 from models import *
 from utils import generate_api_key, serialize, generate_challenge
@@ -467,6 +466,8 @@ async def create_presentation_request(connection_id: str, trusted_issuer_did: st
 
     try:
         res = presentationApi.request_presentation(proofData)
+        logger.info("Presentation request created. Request ID: %s\n" % res.presentation_id)
+
         return res.to_dict()
     except swagger_client.ApiException as e:
         logger.info(f"Exception when calling PresentProofApi->request_presentation: {e}")

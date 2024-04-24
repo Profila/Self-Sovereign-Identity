@@ -23,3 +23,4 @@ def serialize(obj):
         return [serialize(item) for item in obj]
     else:
         raise TypeError(f"Type {type(obj)} not serializable")
+    

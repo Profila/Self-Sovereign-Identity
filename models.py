@@ -9,7 +9,7 @@ class Claim(BaseModel):
     value: str = Field(..., example="alice@gmail.com")
 
 class CredentialOfferRequest(BaseModel):
-    issuerDid: str = Field(..., example="did:example:123456789abcdefghi")
+    issuerDid: str = Field(..., example="did:prism:123456789abcdefghi")
     connectionId: str = Field(..., example="123456789abcdefghi")
     attrClaims : list[Claim] 
 
