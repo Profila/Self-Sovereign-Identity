@@ -7,6 +7,10 @@ def generate_api_key(length=32):
     alphabet = string.ascii_letters + string.digits
     return ''.join(secrets.choice(alphabet) for _ in range(length))
 
+
+def generate_challenge():
+    return secrets.token_urlsafe(16)
+
 def serialize(obj):
     """Helper function to serialize common data types to JSON-compatible formats."""
     if isinstance(obj, (dict, list, str, int, float, bool, type(None))):
