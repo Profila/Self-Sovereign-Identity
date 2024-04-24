@@ -14,11 +14,20 @@ from swagger_client.api.schema_registry_api import SchemaRegistryApi
 from swagger_client.api.issue_credentials_protocol_api import IssueCredentialsProtocolApi
 from swagger_client.configuration import Configuration
 from swagger_client.api.present_proof_api import PresentProofApi
+import swagger_client.models
 from swagger_client.rest import ApiException
 from models import *
 from utils import generate_api_key, serialize
 import time
+import logging
 
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filename='app.log',  # Logs will be written to this file
+    filemode='a')
+
+logger = logging.getLogger(__name__)
 
 tags_metadata = [
     {
@@ -55,335 +64,374 @@ client = ApiClient(config)
 
 @app.get("/get-profile-schema/", tags=["General"])
 def get_schema():
+    try:
+        # Initialize the Schema Registry API client
+        schemaApi = SchemaRegistryApi(client)
 
-    # Get profile schema
+        # Fetch the schema using a predefined schema ID
+        schema_id = "fa313f8f-0c93-35d2-b65d-364e656bd9cf"
+        schema = schemaApi.get_schema_by_id(schema_id)
 
-    schemaApi = SchemaRegistryApi(client)
+        # Return the schema information in a standardized JSON format
+        return JSONResponse(content={"schema": schema}, status_code=200)
 
-    res = schemaApi.get_schema_by_id("fa313f8f-0c93-35d2-b65d-364e656bd9cf")
+    except ApiException as e:
+        # Log the ApiException and return a JSON formatted error response
+        logger.info(f"Failed to retrieve schema: {e}")
+        raise HTTPException(status_code=e.status, detail={"error": e.reason})
 
-    return res
 
 @app.get("/list-users", tags=["Admin"])
 def list_users(x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
-    # List all entities
+    try:
+        # Access the Identity and Access Management API to retrieve all entities
+        entityApi = IdentityAndAccessManagementApi(client)
+        users = entityApi.get_all_entities()
 
-    entityApi = IdentityAndAccessManagementApi(client)
+        # Return a structured response containing the list of users
+        return JSONResponse(content={"users": users}, status_code=200)
 
-    res = entityApi.get_all_entities()
-
-    return res
+    except ApiException as e:
+        # Log the exception and provide a JSON formatted error response
+        logger.info(f"Exception when calling the Entity API: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
 @app.get("/list-wallets", tags=["Admin"])
 def list_wallets(x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
-    wallet_api = WalletManagementApi(client)
+    try:
+        # Retrieve list of wallets using the WalletManagement API
+        wallet_api = WalletManagementApi(client)
+        wallets = wallet_api.get_wallets()
 
-    res = wallet_api.get_wallets()
+        # Return a structured response with the list of wallets
+        return JSONResponse(content={"wallets": wallets}, status_code=200)
 
-    return res
+    except ApiException as e:
+        # Handle any API exceptions that occur and provide a JSON error response
+        logger.info(f"Exception when accessing the wallet API: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
 @app.post("/create-user", tags=["Admin"])
-def create_user(request: CreateUserRequest,  x_admin_api_key: str = Header(None)):
+def create_user(request: CreateUserRequest, x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
-    # Create a wallet
-    wallet_api = WalletManagementApi(client)
-    walletRes = wallet_api.create_wallet({'name': request.name})
-    print("id")
-    print(walletRes.id)
+    try:
+        # Create a wallet
+        wallet_api = WalletManagementApi(client)
+        walletRes = wallet_api.create_wallet({'name': request.name})
 
-    # Create an entity linked to the wallet
-    entityApi = IdentityAndAccessManagementApi(client)
+        # Create an entity linked to the wallet
+        entityApi = IdentityAndAccessManagementApi(client)
+        entityRes = entityApi.create_entity({"name": request.name, "walletId": walletRes.id})
 
-    entityRes = entityApi.create_entity({"name": request.name,"walletId": walletRes.id})
-    print("entity")
-    print(entityRes)
+        # Provide Auth method for new entity
+        userApiKey = "user." + generate_api_key()
+        entityApi.add_entity_api_key_authentication({"entityId": entityRes.id, "apiKey": userApiKey})
 
-    # Provide Auth method for new entity
-    userApiKey = "user." + generate_api_key()
-    print("User api key")
-    print(userApiKey)
-    entityApi.add_entity_api_key_authentication({"entityId": entityRes.id, "apiKey": userApiKey})
+        # Create a DID for the entity
+        client.set_default_header('apiKey', userApiKey)
+        didApi = DIDRegistrarApi(client)
+        didRes = didApi.post_did_registrar_dids({
+            "documentTemplate": {
+                "publicKeys": [{"id": "auth-1", "purpose": "authentication"}],
+                "services": []
+            }
+        })
 
-    # Create a DID for the entity
-    client.set_default_header('apiKey', userApiKey)
+        # Build response with required info from all requests
+        response = {
+            "userId": entityRes.id,
+            "walletId": walletRes.id,
+            "did": didRes.long_form_did,
+            "userApiKey": userApiKey
+        }
+        return JSONResponse(content=response, status_code=201)
 
-    didApi = DIDRegistrarApi(client)
+    except ApiException as e:
+        logger.info(f"Exception when processing create_user: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
-    didRes = didApi.post_did_registrar_dids({"documentTemplate": {"publicKeys": [{"id": "auth-1","purpose": "authentication"}],"services": []}})
-
-    # Build response with required info from all requests
-    response = {"userId": entityRes.id, "walletId": walletRes.id, "did":didRes.long_form_did, "userApiKey": userApiKey}
-
-    return response
 
 @app.post("/create-issuer", tags=["Admin"])
-def create_issuer(request: CreateUserRequest,  x_admin_api_key: str = Header(None)):
+def create_issuer(request: CreateUserRequest, x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
-    # Create a wallet
-    wallet_api = WalletManagementApi(client)
-    walletRes = wallet_api.create_wallet({'name': request.name})
-    print("id")
-    print(walletRes.id)
+    try:
+        # Create a wallet
+        wallet_api = WalletManagementApi(client)
+        walletRes = wallet_api.create_wallet({'name': request.name})
 
-    # Create an entity linked to the wallet
-    entityApi = IdentityAndAccessManagementApi(client)
+        # Create an entity linked to the wallet
+        entityApi = IdentityAndAccessManagementApi(client)
+        entityRes = entityApi.create_entity({"name": request.name, "walletId": walletRes.id})
 
-    entityRes = entityApi.create_entity({"name": request.name,"walletId": walletRes.id})
-    print("entity")
-    print(entityRes)
+        # Provide Auth method for new entity
+        userApiKey = "issuer." + generate_api_key()
+        entityApi.add_entity_api_key_authentication({"entityId": entityRes.id, "apiKey": userApiKey})
 
-    # Provide Auth method for new entity
-    userApiKey = "issuer." + generate_api_key()
-    print("User api key")
-    print(userApiKey)
-    entityApi.add_entity_api_key_authentication({"entityId": entityRes.id, "apiKey": userApiKey})
+        # Create a DID for the entity
+        client.set_default_header('apiKey', userApiKey)
+        didApi = DIDRegistrarApi(client)
+        didRes = didApi.post_did_registrar_dids({
+            "documentTemplate": {
+                "publicKeys": [{"id": "auth-1", "purpose": "assertionMethod"}],
+                "services": []
+            }
+        })
 
-    # Create a DID for the entity
-    client.set_default_header('apiKey', userApiKey)
+        # Build response with required info from all requests
+        response = {
+            "userId": entityRes.id,
+            "walletId": walletRes.id,
+            "did": didRes.long_form_did,
+            "userApiKey": userApiKey
+        }
+        return JSONResponse(content=response, status_code=201)
 
-    didApi = DIDRegistrarApi(client)
+    except ApiException as e:
+        logger.info(f"Exception when processing create_issuer: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
-    didRes = didApi.post_did_registrar_dids({"documentTemplate": {"publicKeys": [{"id": "auth-1","purpose": "assertionMethod"}],"services": []}})
-
-    # Build response with required info from all requests
-    response = {"userId": entityRes.id, "walletId": walletRes.id, "did":didRes.long_form_did, "userApiKey": userApiKey}
-
-    return response
 
 @app.post("/create-brand", tags=["Admin"])
-def create_brand(request: CreateUserRequest,  x_admin_api_key: str = Header(None)):
+def create_brand(request: CreateUserRequest, x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
-    # Create a wallet
-    wallet_api = WalletManagementApi(client)
-    walletRes = wallet_api.create_wallet({'name': request.name})
-    print("id")
-    print(walletRes.id)
+    try:
+        # Create a wallet
+        wallet_api = WalletManagementApi(client)
+        walletRes = wallet_api.create_wallet({'name': request.name})
 
-    # Create an entity linked to the wallet
-    entityApi = IdentityAndAccessManagementApi(client)
+        # Create an entity linked to the wallet
+        entityApi = IdentityAndAccessManagementApi(client)
+        entityRes = entityApi.create_entity({"name": request.name, "walletId": walletRes.id})
 
-    entityRes = entityApi.create_entity({"name": request.name,"walletId": walletRes.id})
-    print("entity")
-    print(entityRes)
+        # Provide Auth method for new entity
+        userApiKey = "brand." + generate_api_key()
+        entityApi.add_entity_api_key_authentication({"entityId": entityRes.id, "apiKey": userApiKey})
 
-    # Provide Auth method for new entity
-    userApiKey = "brand." + generate_api_key()
-    print("User api key")
-    print(userApiKey)
-    entityApi.add_entity_api_key_authentication({"entityId": entityRes.id, "apiKey": userApiKey})
+        # Create a DID for the entity
+        client.set_default_header('apiKey', userApiKey)
+        didApi = DIDRegistrarApi(client)
+        didRes = didApi.post_did_registrar_dids({
+            "documentTemplate": {
+                "publicKeys": [{"id": "auth-1", "purpose": "assertionMethod"}],
+                "services": []
+            }
+        })
 
-    # Create a DID for the entity
-    client.set_default_header('apiKey', userApiKey)
+        # Build response with required info from all requests
+        response = {
+            "userId": entityRes.id,
+            "walletId": walletRes.id,
+            "did": didRes.long_form_did,
+            "userApiKey": userApiKey
+        }
+        return JSONResponse(content=response, status_code=201)
 
-    didApi = DIDRegistrarApi(client)
+    except ApiException as e:
+        logger.info(f"Exception when processing create_brand: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
-    didRes = didApi.post_did_registrar_dids({"documentTemplate": {"publicKeys": [{"id": "auth-1","purpose": "assertionMethod"}],"services": []}})
-
-    # Build response with required info from all requests
-    response = {"userId": entityRes.id, "walletId": walletRes.id, "did":didRes.long_form_did, "userApiKey": userApiKey}
-
-    return response
 
 
 @app.get("/resolve-did/{did}", tags=["Admin"])
 def resolve_did(did: str = Path(..., description="The DID to resolve"), x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
-    # Resolve a DID
-
     didApi = DIDApi(client)
 
-    res = didApi.get_did(did)
-
-    return res
+    try:
+        res = didApi.get_did(did)
+        return JSONResponse(content=res, status_code=200)
+    except ApiException as e:
+        logger.info(f"Exception when calling DIDApi->get_did: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
 @app.get("/user-details/{id}", tags=["Admin"])
 def user_details(id: str = Path(..., description="User ID"), x_admin_api_key: str = Header(None)):
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
-    # Show user details
-
     entityApi = IdentityAndAccessManagementApi(client)
 
-    res = entityApi.get_entity_by_id(id)
+    try:
+        res = entityApi.get_entity_by_id(id)
+        return JSONResponse(content=res, status_code=200)
+    except ApiException as e:
+        logger.info(f"Exception when calling IdentityAndAccessManagementApi->get_entity_by_id: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
-    return res
 
 @app.get("/list-dids/", tags=["User"])
 def list_user_dids(user_api_key: str = Header(None)):
     client.set_default_header('apiKey', user_api_key)
 
-    # List all dids of user
-
     didRegistrar = DIDRegistrarApi(client)
 
-    res = didRegistrar.get_did_registrar_dids()
-
-    return res
+    try:
+        res = didRegistrar.get_did_registrar_dids()
+        return JSONResponse(content=res, status_code=200)
+    except ApiException as e:
+        logger.info(f"Exception when calling DIDRegistrarApi->get_did_registrar_dids: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
 @app.get("/establish-connection-to-user/", tags=["Issuer", "Brand"])
 def establish_connection_to_user(requestor_api_key: str = Header(None), user_api_key: str = Header(None)):
     client.set_default_header('apiKey', requestor_api_key)
 
-    # Establish a didcomm connection
-
     connectionApi = ConnectionsManagementApi(client)
 
-    # Issuer Create Invitation
-    createConnRes = connectionApi.create_connection({"label": "Connection request"})
+    try:
+        # Issuer creates an invitation
+        createConnRes = connectionApi.create_connection({"label": "Connection request"})
+        invitation_url = createConnRes.invitation.invitation_url
+        rawInvitation = invitation_url.split('oob=')[1] if 'oob=' in invitation_url else None
 
-    # User Accept Invitation
-    client.set_default_header('apiKey', user_api_key)
-        # Copy string in createConnRes.invitation.invitationUrl from 'oob=' to the end and store it in rawInvitation
-    rawInvitation = createConnRes.invitation.invitation_url.split('oob=')[1]
-    acceptConnRes = connectionApi.accept_connection_invitation({"invitation": rawInvitation})
+        if not rawInvitation:
+            raise ValueError("Invalid invitation URL format.")
 
-    # Isuer Check Connection Status
-    client.set_default_header('apiKey', requestor_api_key)
-    checkConnRes = connectionApi.get_connection(createConnRes.thid)
+        # User accepts the invitation
+        client.set_default_header('apiKey', user_api_key)
+        acceptConnRes = connectionApi.accept_connection_invitation({"invitation": rawInvitation})
 
-    return checkConnRes
+        # Issuer checks connection status
+        client.set_default_header('apiKey', requestor_api_key)
+        checkConnRes = connectionApi.get_connection(createConnRes.thid)
+
+        return JSONResponse(content=checkConnRes, status_code=200)
+    except ApiException as e:
+        logger.info(f"Exception when calling ConnectionsManagementApi: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
+    except ValueError as ve:
+        logger.info(f"Value Error: {ve}")
+        raise HTTPException(status_code=400, detail={"reason": str(ve)})
+
 
 @app.get("/check-connection/{id}", tags=["Issuer", "Brand"])
 def check_connection(id: str = Path(..., description="Connection ID"), requestor_api_key: str = Header(None)):
     client.set_default_header('apiKey', requestor_api_key)
 
-    # Check connection status
-
     connectionApi = ConnectionsManagementApi(client)
 
-    # Issuer Check Connection Status
-    res = connectionApi.get_connection(id)
+    try:
+        # Check connection status for a specific ID
+        res = connectionApi.get_connection(id)
+        return JSONResponse(content=res, status_code=200)
+    except ApiException as e:
+        logger.info(f"Exception when calling ConnectionsManagementApi->get_connection: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
-    return res
 
 @app.get("/list-connections/", tags=["Issuer", "Brand"])
 def list_connections(requestor_api_key: str = Header(None)):
     client.set_default_header('apiKey', requestor_api_key)
 
-    # Check connection status
-
     connectionApi = ConnectionsManagementApi(client)
 
-    # Issuer Check Connection Status
-    res = connectionApi.get_connections()
+    try:
+        # Check connection status
+        res = connectionApi.get_connections()
+        return JSONResponse(content=res, status_code=200)
+    except ApiException as e:
+        logger.info(f"Exception when calling ConnectionsManagementApi->get_connections: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
-    return res
 
 @app.post("/offer-credential", tags=["Issuer"])
-def offer_credential(request: CredentialOfferRequest, user_api_key: str = Header(None), issuer_api_key: str = Header(None)):
+def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api_key: str = Header(None)):
     client.set_default_header('apiKey', issuer_api_key)
-
-    # Create Credential Offer
 
     issueCredApi = IssueCredentialsProtocolApi(client)
 
-    # {
-    #     "claims": {
-    #     "emailAddress": "alice@wonderland.com",
-    #     "givenName": "Alice",
-    #     "familyName": "Wonderland",
-    #     "dateOfIssuance": "2020-11-13T20:20:39+00:00",
-    #     "drivingLicenseID": "12345",
-    #     "drivingClass": 3
-    #     },
-    #     "credentialFormat": "JWT",
-    #     "issuingDID": "did:prism:9f847f8bbb66c112f71d08ab39930d468ccbfe1e0e1d002be53d46c431212c26",
-    #     "connectionId": "9d075518-f97e-4f11-9d10-d7348a7a0fda",
-    #     "schemaId": "http://localhost:8080/prism-agent/schema-registry/schemas/3f86a73f-5b78-39c7-af77-0c16123fa9c2"
-    # }
+    try:
+        # Create Credential Offer
+        offerData = {
+            "validityPeriod": 86400,  # One day
+            "schemaId": f"http://{hostAddress}:8080/prism-agent/schema-registry/schemas/{schema_id}",
+            "issuingDID": request.issuerDid,
+            "claims": {
+                "emailAddress": request.email, 
+                "givenName": request.name, 
+                "familyName": request.surname
+            },
+            "automaticIssuance": True,
+            "connectionId": request.connectionId,
+            "credentialFormat": "JWT"
+        }
+        offerRes = issueCredApi.create_credential_offer(offerData)
 
-    # TODO Elmer: Use model
-    offerRes = issueCredApi.create_credential_offer({"validityPeriod": 86400, # One day
-                                                     "schemaId": "http://"+hostAddress+":8080/prism-agent/schema-registry/schemas/c02e2e89-b7fe-3c78-a4e3-3bc6636b5469",
-                                                     "issuingDID": request.issuerDid,
-                                                     "claims": {"emailAddress": request.email, "givenName": request.name, "familyName": request.surname},
-                                                     "automaticIssuance": True,
-                                                     "connectionId": request.connectionId,
-                                                     "credentialFormat": "JWT"})
-    
-    # Record ID: 10c766af-8cea-4a81-8a24-99f9051076a5
-
-    issuerOfferRes = issueCredApi.get_credential_record(offerRes.record_id)
-
-
-    issuerOfferState = issuerOfferRes.protocol_state
-    retries = 10
-    retryCount = 0
-    while issuerOfferState != "OfferSent" and retryCount < retries:
+        # Polling to check credential offer state
         issuerOfferRes = issueCredApi.get_credential_record(offerRes.record_id)
-        issuerOfferState = issuerOfferRes.protocol_state
-        # Sleep for 1 second
-        time.sleep(1)
-        retryCount += 1
+        retries = 10
+        for _ in range(retries):
+            if issuerOfferRes.protocol_state == "OfferSent":
+                return JSONResponse(content=issuerOfferRes, status_code=200)
+            time.sleep(1)  # Sleep for 1 second
+            issuerOfferRes = issueCredApi.get_credential_record(offerRes.record_id)
 
-    if issuerOfferState != "OfferSent":
-        return {"error": "Credential offer not sent"}
-    
-    return issuerOfferRes
+        # If state is not OfferSent after retries
+        raise HTTPException(status_code=400, detail="Credential offer not sent after 10 retries")
+
+    except ApiException as e:
+        logger.info(f"Exception when calling IssueCredentialsProtocolApi->create_credential_offer: {e}\n")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
+
 
 @app.get("/list-credential-offers", tags=["User"])
 def list_credential_offers(user_api_key: str = Header(None)):
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
-    # List Holder Credential Offers
 
-    holderOffersRes = issueCredApi.get_credential_records()
+    try:
+        # List Holder Credential Offers
+        holderOffersRes = issueCredApi.get_credential_records()
+        
+        # Filter out the offers that are not in OfferReceived state
+        holderOffers = [offer for offer in holderOffersRes.contents if offer.protocol_state == "OfferReceived"]
+        
+        return JSONResponse(content={"offers": holderOffers}, status_code=200)
+    except ApiException as e:
+        logger.info(f"Exception when calling IssueCredentialsProtocolApi->get_credential_records: {e}\n")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
-    # Filter out the offers that are not in OfferReceived state
-
-    holderOffers = []
-    for offer in holderOffersRes.contents:
-        if(offer.protocol_state == "OfferReceived"):
-            holderOffers.append(offer)
-
-    # Accept All Credential Offers
-
-    # for offer in holderOffersRes.results:
-    #     if(offer.protocol_state == "OfferReceived"):
-    #         print("Accepting credential offer")
-    #         acceptCredRes = issueCredApi.accept_credential_offer(body={}, record_id=offer.record_id)
-
-    # acceptCredRes = issueCredApi.accept_credential_offer(body={}, record_id="e2d8d813-7bbb-48c6-9b3c-ef03d75b231f")#holderOfferRes.record_id)
-
-    return holderOffers
 
 @app.post("/accept-credential-offer/{id}", tags=["User"])
-def accept_credential_offer(subjectId: str, id: str = Path(..., description="Offer ID") , user_api_key: str = Header(None)):
+def accept_credential_offer(subjectId: str, id: str = Path(..., description="Offer ID"), user_api_key: str = Header(None)):
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
 
-    # Accept Credential Offer
-
-    acceptCredRes = issueCredApi.accept_credential_offer(body={"subjectId": subjectId}, record_id=id, )
-
-    return acceptCredRes
+    try:
+        # Accept Credential Offer
+        acceptCredRes = issueCredApi.accept_credential_offer(body={"subjectId": subjectId}, record_id=id)
+        return JSONResponse(content=acceptCredRes, status_code=200)
+    except ApiException as e:
+        logger.info(f"Exception when calling IssueCredentialsProtocolApi->accept_credential_offer: {e}\n")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
+    
 
 @app.get("/get-credential/{id}", tags=["User"])
-def get_credential(id: str = Path(..., description="Credential ID") , user_api_key: str = Header(None)):
+def get_credential(id: str = Path(..., description="Credential ID"), user_api_key: str = Header(None)):
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
 
-    # Get Credential Details
-
-    credentialRes = issueCredApi.get_credential_record(id)
-
-    return credentialRes
-
+    try:
+        # Get Credential Details
+        credentialRes = issueCredApi.get_credential_record(id)
+        return JSONResponse(content=credentialRes, status_code=200)
+    except ApiException as e:
+        logger.info(f"Exception when calling IssueCredentialsProtocolApi->get_credential_record: {e}\n")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
 @app.get("/list-credentials/", tags=["User"])
@@ -392,63 +440,73 @@ def list_credentials(user_api_key: str = Header(None)):
 
     issueCredApi = IssueCredentialsProtocolApi(client)
 
-    # List Holder Credentials
+    try:
+        # List Holder Credentials
+        res = issueCredApi.get_credential_records()
+        return JSONResponse(content=res, status_code=200)
+    except ApiException as e:
+        logger.info(f"Exception when calling IssueCredentialsProtocolApi->get_credential_records: {e}\n")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
-    res = issueCredApi.get_credential_records()
 
-    return res
-
-
-@app.get("/create-presentation-request/", tags=["Brand"])
-def create_presentation_request(brand_api_key: str = Header(None)):
+@app.post("/create-presentation-request/", tags=["Brand"])
+async def create_presentation_request(connection_id: str, trusted_issuer_did: str, brand_api_key: str = Header(None)):
     client.set_default_header('apiKey', brand_api_key)
-
-    presentationApi = PresentProofApi(client)
-
-    # Create Presentation Request
-
-    # proof_request = RequestPresentationInput.from_dict(data)
-    # verifier_proof_request: Response[RequestPresentationInput] = request_presentation.sync(client=verifier_client, json_body=proof_request)
     
-    # proofData = swagger_client.RequestPresentationInput(connection_id="21ce6a37-122c-426d-b10c-401965942f1b", 
-    #                                                     options={"challenge": "11c91493-01b3-4c4d-ac36-b336bab5bddf", 
-    #                                                              "domain": "https://example-verifier.com"}, 
-    #                                                     proofs=[],
-    #                                                     credential_format= "JWT"
-    #                                                     )
-    proofData = swagger_client.RequestPresentationInput(connection_id="21ce6a37-122c-426d-b10c-401965942f1b", 
-                                                        options={"challenge": "11c91493-01b3-4c4d-ac36-b336bab5bddf", 
-                                                                 "domain": "https://example-verifier.com"}, 
-                                                        proofs=[{"schemaId":"https://schema.org/Person", 
-                                                                 "trustIssuers": ["did:prism:cc523481a6540d7c1674a5ecf94ad482619405664cc48d7b14620cf2ef097c12"]}],
-                                                        )
+    presentationApi = swagger_client.PresentProofApi(client)
+    
+    # Generate a unique challenge for the request
+    challenge = str(uuid.uuid4())
+
+    proofData = swagger_client.RequestPresentationInput(
+        connection_id=connection_id, 
+        options={"challenge": challenge, "domain": "https://profila.com"},
+        proofs=[{"schemaId": "https://schema.org/Person", "trustIssuers": [trusted_issuer_did]}]
+    )
+
+    try:
+        res = presentationApi.request_presentation(proofData)
+        return JSONResponse(content=res, status_code=200)
+    except swagger_client.ApiException as e:
+        logger.info(f"Exception when calling PresentProofApi->request_presentation: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
-    res = presentationApi.request_presentation(proofData)
+@app.get("/list-presentation-requests/", tags=["User", "Brand"])
+async def list_presentation_requests(requestor_api_key: str = Header(None)):
+    client.set_default_header('apiKey', requestor_api_key)
+    
+    presentationApi = swagger_client.PresentProofApi(client)
+    
+    try:
+        res = presentationApi.get_all_presentation()
+        return JSONResponse(content=res, status_code=200)
+    except swagger_client.ApiException as e:
+        logger.info(f"Exception when calling PresentProofApi->get_all_presentation: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
-    return res
 
-@app.get("/present-credential/", tags=["User"])
-def present_credential(user_api_key: str = Header(None)):
+@app.post("/present-credential/", tags=["User"])
+def present_credential(vc_id: str, user_api_key: str = Header(None)):
     client.set_default_header('apiKey', user_api_key)
 
     presentationApi = PresentProofApi(client)
 
     # Respond to Presentation Request
 
-    body = swagger_client.RequestPresentationAction(action="request-accept", proof_id=["10781032-d1f0-423e-b050-30d510cdbe51"])
+    body = swagger_client.RequestPresentationAction(action="request-accept", proof_id=[vc_id])
     
     try:
         res = presentationApi.update_presentation(body=body, presentation_id="291cbbab-8e32-49c5-b2e8-423e3590ac08")
-        pprint(serialize(res))
+        logger.info(serialize(res))
         return JSONResponse(content=serialize(res), status_code=200)
     except ApiException as e:
-        print("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
+        logger.info("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
-@app.get("/accept-presentation-response/", tags=["Brand"])
-def accept_presentation_response(brand_api_key: str = Header(None)):
+@app.post("/accept-presentation-response/", tags=["Brand"])
+def accept_presentation_response(presentation_id: str, brand_api_key: str = Header(None)):
     client.set_default_header('apiKey', brand_api_key)
 
     presentationApi = PresentProofApi(client)
@@ -456,9 +514,9 @@ def accept_presentation_response(brand_api_key: str = Header(None)):
     body = swagger_client.RequestPresentationAction(action="presentation-accept")
 
     try:
-        res = presentationApi.update_presentation(body=body, presentation_id="4af6b5fb-b8f9-4197-96d2-6b155d5daa39")
-        pprint(serialize(res))
+        res = presentationApi.update_presentation(body=body, presentation_id=presentation_id)
+        logger.info(serialize(res))
         return JSONResponse(content=serialize(res), status_code=200)
     except ApiException as e:
-        print("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
+        logger.info("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
