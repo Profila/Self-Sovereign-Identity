@@ -16,7 +16,7 @@ from swagger_client.configuration import Configuration
 from swagger_client.api.present_proof_api import PresentProofApi
 from swagger_client.rest import ApiException
 from models import *
-from openapi.models import CredentialSchemaResponse, DIDResolutionResult, EntityCreated, EntityResponse, EntityResponsePage, ManagedDIDPage, WalletDetail, WalletDetailPage, Connection
+from openapi.models import ConnectionsPage, CredentialSchemaResponse, DIDResolutionResult, EntityCreated, EntityResponse, EntityResponsePage, IssueCredentialRecord, IssueCredentialRecordPage, ManagedDIDPage, PresentationStatus, PresentationStatusPage, WalletDetail, WalletDetailPage, Connection
 from utils import generate_api_key, serialize, generate_challenge
 import time
 import logging
@@ -220,7 +220,7 @@ def list_user_dids(user_api_key: str = Header(None)) -> ManagedDIDPage:
 
 
 @app.get("/establish-connection-to-user/", tags=["Issuer", "Brand"])
-def establish_connection_to_user(requestor_api_key: str = Header(None), user_api_key: str = Header(None)):
+def establish_connection_to_user(requestor_api_key: str = Header(None), user_api_key: str = Header(None)) -> Connection:
     client.set_default_header('apiKey', requestor_api_key)
 
     connectionApi = ConnectionsManagementApi(client)
@@ -257,7 +257,7 @@ def establish_connection_to_user(requestor_api_key: str = Header(None), user_api
 
 
 @app.get("/get-connection/{id}", tags=["Issuer", "Brand"])
-def get_connection(id: str = Path(..., description="Connection ID"), requestor_api_key: str = Header(None)):
+def get_connection(id: str = Path(..., description="Connection ID"), requestor_api_key: str = Header(None)) -> Connection:
     client.set_default_header('apiKey', requestor_api_key)
 
     connectionApi = ConnectionsManagementApi(client)
@@ -272,7 +272,7 @@ def get_connection(id: str = Path(..., description="Connection ID"), requestor_a
 
 
 @app.get("/list-connections/", tags=["Issuer", "Brand"])
-def list_connections(requestor_api_key: str = Header(None)):
+def list_connections(requestor_api_key: str = Header(None)) -> ConnectionsPage:
     client.set_default_header('apiKey', requestor_api_key)
 
     connectionApi = ConnectionsManagementApi(client)
@@ -340,7 +340,7 @@ def get_schema(id: str = Path(..., description="Schema ID"), issuer_api_key: str
     
 # TODO Continue adding models here
 @app.post("/offer-credential", tags=["Issuer"])
-def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api_key: str = Header(None)):
+def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api_key: str = Header(None)) -> IssueCredentialRecord:
     client.set_default_header('apiKey', issuer_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
@@ -379,7 +379,7 @@ def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api
 
 
 @app.get("/list-credential-offers", tags=["User"])
-def list_credential_offers(user_api_key: str = Header(None)):
+def list_credential_offers(user_api_key: str = Header(None)) -> List[IssueCredentialRecord]:
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
@@ -399,7 +399,7 @@ def list_credential_offers(user_api_key: str = Header(None)):
 
 
 @app.post("/accept-credential-offer/{id}", tags=["User"])
-def accept_credential_offer(subjectId: str, id: str = Path(..., description="Offer ID"), user_api_key: str = Header(None)):
+def accept_credential_offer(subjectId: str, id: str = Path(..., description="Offer ID"), user_api_key: str = Header(None)) -> IssueCredentialRecord:
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
@@ -414,7 +414,7 @@ def accept_credential_offer(subjectId: str, id: str = Path(..., description="Off
     
 
 @app.get("/get-credential/{id}", tags=["User"])
-def get_credential(id: str = Path(..., description="Credential ID"), user_api_key: str = Header(None)):
+def get_credential(id: str = Path(..., description="Credential ID"), user_api_key: str = Header(None)) -> IssueCredentialRecord:
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
@@ -429,7 +429,7 @@ def get_credential(id: str = Path(..., description="Credential ID"), user_api_ke
 
 
 @app.get("/list-received-credentials/", tags=["User"])
-def list_received_credentials(user_api_key: str = Header(None)):
+def list_received_credentials(user_api_key: str = Header(None)) -> List[IssueCredentialRecord]:
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
@@ -448,7 +448,7 @@ def list_received_credentials(user_api_key: str = Header(None)):
 
 
 @app.post("/create-presentation-request/", tags=["Brand"])
-async def create_presentation_request(connection_id: str, trusted_issuer_did: str, brand_api_key: str = Header(None)):
+async def create_presentation_request(connection_id: str, trusted_issuer_did: str, brand_api_key: str = Header(None)) -> PresentationStatus:
     client.set_default_header('apiKey', brand_api_key)
     
     presentationApi = swagger_client.PresentProofApi(client)
@@ -466,14 +466,14 @@ async def create_presentation_request(connection_id: str, trusted_issuer_did: st
         res = presentationApi.request_presentation(proofData)
         logger.info("Presentation request created. Request ID: %s\n" % res.presentation_id)
 
-        return res.to_dict()
+        return res
     except swagger_client.ApiException as e:
         logger.info(f"Exception when calling PresentProofApi->request_presentation: {e}")
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
 @app.get("/list-presentation-requests/", tags=["User", "Brand"])
-async def list_presentation_requests(requestor_api_key: str = Header(None)):
+async def list_presentation_requests(requestor_api_key: str = Header(None)) -> PresentationStatusPage:
     client.set_default_header('apiKey', requestor_api_key)
     
     presentationApi = swagger_client.PresentProofApi(client)
@@ -487,7 +487,7 @@ async def list_presentation_requests(requestor_api_key: str = Header(None)):
 
 
 @app.get("/get-presentation-request/{id}", tags=["User", "Brand"])
-async def get_presentation_request(id: str = Path(..., description="Presentation Request ID"), requestor_api_key: str = Header(None)):
+async def get_presentation_request(id: str = Path(..., description="Presentation Request ID"), requestor_api_key: str = Header(None)) -> PresentationStatus:
     client.set_default_header('apiKey', requestor_api_key)
 
     presentationApi = swagger_client.PresentProofApi(client)
@@ -501,7 +501,7 @@ async def get_presentation_request(id: str = Path(..., description="Presentation
     
 
 @app.post("/present-credential/{id}", tags=["User"])
-def present_credential(vc_record_id: str, id: str = Path(..., description="Presentation Request ID"), user_api_key: str = Header(None)):
+def present_credential(vc_record_id: str, id: str = Path(..., description="Presentation Request ID"), user_api_key: str = Header(None)) -> PresentationStatus:
     client.set_default_header('apiKey', user_api_key)
 
     presentationApi = PresentProofApi(client)
@@ -512,25 +512,25 @@ def present_credential(vc_record_id: str, id: str = Path(..., description="Prese
     
     try:
         res = presentationApi.update_presentation(body=body, presentation_id=id)
-        logger.info(serialize(res))
-        return JSONResponse(content=serialize(res), status_code=200)
+        logger.info("Presented credential: %s\n" % serialize(res))
+        return res
     except ApiException as e:
         logger.info("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
-@app.post("/accept-presentation-response/", tags=["Brand"])
-def accept_presentation_response(presentation_id: str, brand_api_key: str = Header(None)):
-    client.set_default_header('apiKey', brand_api_key)
+# @app.post("/accept-presentation-response/", tags=["Brand"])
+# def accept_presentation_response(presentation_id: str, brand_api_key: str = Header(None)) -> PresentationStatus:
+#     client.set_default_header('apiKey', brand_api_key)
 
-    presentationApi = PresentProofApi(client)
+#     presentationApi = PresentProofApi(client)
 
-    body = swagger_client.RequestPresentationAction(action="presentation-accept")
+#     body = swagger_client.RequestPresentationAction(action="presentation-accept")
 
-    try:
-        res = presentationApi.update_presentation(body=body, presentation_id=presentation_id)
-        logger.info(serialize(res))
-        return JSONResponse(content=serialize(res), status_code=200)
-    except ApiException as e:
-        logger.info("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
-        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
+#     try:
+#         res = presentationApi.update_presentation(body=body, presentation_id=presentation_id)
+#         logger.info("Presented credential: %s\n" % serialize(res))
+#         return res
+#     except ApiException as e:
+#         logger.info("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
+#         raise HTTPException(status_code=e.status, detail={"reason": e.reason})

@@ -91,7 +91,7 @@ class ConnectionInvitation(BaseModel):
     )
     from_: str = Field(
         ...,
-        alias='from',
+        alias='_from',
         description='The DID representing the sender to be used by recipients for future interactions.',
         example='did:peer:1234457',
     )
@@ -492,7 +492,7 @@ class ProtocolState(Enum):
 
 
 class IssueCredentialRecord(BaseModel):
-    recordId: str = Field(
+    record_id: str = Field(
         ...,
         description='The unique identifier of the issue credential record.',
         example='80d612dc-0ded-4ac9-90b4-1b8eabb04545',
@@ -502,17 +502,17 @@ class IssueCredentialRecord(BaseModel):
         description='The unique identifier of the thread this credential record belongs to. The value will identical on both sides of the issue flow (issuer and holder)',
         example='0527aea1-d131-3948-a34d-03af39aba8b4',
     )
-    credentialFormat: CredentialFormat = Field(
+    credential_format: CredentialFormat = Field(
         ...,
         description="The format used for this credential offer (default to 'JWT')",
         example='JWT',
     )
-    subjectId: Optional[str] = Field(
+    subject_id: Optional[str] = Field(
         None,
         description='The identifier (e.g DID) of the subject to which the verifiable credential will be issued.',
         example='did:prism:subjectofverifiablecredentials',
     )
-    validityPeriod: Optional[float] = Field(
+    validity_period: Optional[float] = Field(
         None,
         description='The validity period in seconds of the verifiable credential that will be issued.',
         example=3600.0,
@@ -522,17 +522,17 @@ class IssueCredentialRecord(BaseModel):
         description='The claims that will be associated with the issued verifiable credential.',
         example='(firstname,Alice)',
     )
-    automaticIssuance: Optional[bool] = Field(
+    automatic_issuance: Optional[bool] = Field(
         None,
         description='Specifies whether or not the credential should be automatically generated and issued when receiving the `CredentialRequest` from the holder. If set to `false`, a manual approval by the issuer via API call will be required for the VC to be issued.',
         example=True,
     )
-    createdAt: datetime = Field(
+    created_at: datetime = Field(
         ...,
         description='The date and time when the issue credential record was created.',
         example='2024-04-23T11:13:44.493848580Z',
     )
-    updatedAt: Optional[datetime] = Field(
+    updated_at: Optional[datetime] = Field(
         None,
         description='The date and time when the issue credential record was last updated.',
     )
@@ -541,7 +541,7 @@ class IssueCredentialRecord(BaseModel):
         description='The role played by the Prism agent in the credential issuance flow.',
         example='Issuer',
     )
-    protocolState: ProtocolState = Field(
+    protocol_state: ProtocolState = Field(
         ...,
         description='The current state of the issue credential protocol execution.',
         example='OfferPending',
@@ -550,12 +550,12 @@ class IssueCredentialRecord(BaseModel):
         None,
         description='The base64-encoded verifiable credential, in JWT or AnonCreds format, that has been sent by the issuer.',
     )
-    issuingDID: Optional[str] = Field(
+    issuing_did: Optional[str] = Field(
         None,
         description='Issuer DID of the verifiable credential object.',
         example='did:prism:issuerofverifiablecredentials',
     )
-    metaRetries: int = Field(
+    meta_retries: int = Field(
         ...,
         description='The maximum background processing attempts remaining for this record',
         example=5,
@@ -563,17 +563,17 @@ class IssueCredentialRecord(BaseModel):
 
 
 class IssueCredentialRecordPage(BaseModel):
-    self: str = Field(
-        ...,
-        description='A string field containing the URL of the current API endpoint',
-        example='/prism-agent/schema-registry/schemas?skip=10&limit=10',
-    )
+    # self: str = Field(
+    #     ...,
+    #     description='A string field containing the URL of the current API endpoint',
+    #     example='/prism-agent/schema-registry/schemas?skip=10&limit=10',
+    # )
     kind: str = Field(
         ...,
         description='A string field containing the URL of the current API endpoint',
         example='/prism-agent/schema-registry/schemas?skip=10&limit=10',
     )
-    pageOf: str = Field(
+    page_of: str = Field(
         ...,
         description='A string field indicating the type of resource that the contents field contains',
         example='/prism-agent/schema-registry/schemas',
@@ -992,10 +992,10 @@ class Connection(BaseModel):
 class ConnectionsPage(BaseModel):
     contents: Optional[List[Connection]] = Field(None, description='', example=[])
     kind: str = Field(..., description='', example='ConnectionsPage')
-    self: str = Field(
-        ..., description='', example='/prism-agent/connections?offset=10&limit=10'
-    )
-    pageOf: str = Field(..., description='', example='')
+    # self: str = Field(
+    #     ..., description='', example='/prism-agent/connections?offset=10&limit=10'
+    # )
+    page_of: str = Field(..., description='', example='')
     next: Optional[str] = Field(
         None, description='', example='/prism-agent/connections?offset=20&limit=10'
     )
@@ -1280,7 +1280,7 @@ class ManagedDIDKeyTemplate(BaseModel):
 
 
 class PresentationStatus(BaseModel):
-    presentationId: str = Field(
+    presentation_id: str = Field(
         ...,
         description='The unique identifier of the presentation record.',
         example='3c6d9fa5-d277-431e-a6cb-d3956e47e610',
@@ -1310,12 +1310,12 @@ class PresentationStatus(BaseModel):
         description='The list of proofs presented by the prover to the verifier.',
         example=[],
     )
-    connectionId: Optional[str] = Field(
+    connection_id: Optional[str] = Field(
         None,
         description='The unique identifier of an established connection between the verifier and the prover.',
         example='bc528dc8-69f1-4c5a-a508-5f8019047900',
     )
-    metaRetries: int = Field(
+    meta_retries: int = Field(
         ...,
         description='The maximum background processing attempts remaining for this record',
         example=5,
@@ -1326,17 +1326,17 @@ class PresentationStatusPage(BaseModel):
     contents: Optional[List[PresentationStatus]] = Field(
         None, description='A sequence of Presentation objects.', example=[]
     )
-    self: str = Field(
-        ...,
-        description='The reference to the presentation collection itself.',
-        example='/present-proof/presentations',
-    )
+    # self: str = Field(
+    #     ...,
+    #     description='The reference to the presentation collection itself.',
+    #     example='/present-proof/presentations',
+    # )
     kind: str = Field(
         ...,
         description='The type of object returned. In this case a `Collection`.',
         example='Collection',
     )
-    pageOf: str = Field(
+    page_of: str = Field(
         ...,
         description='Page number within the context of paginated response.',
         example=1,
