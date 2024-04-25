@@ -1,7 +1,7 @@
-## Profila Prism API
+# Profila Prism API Documentation
 
-These documents describe the steps needed to cater to Profila's SSI requirements.
+This documentation outlines the flows required to meet Profila’s Self-Sovereign Identity (SSI) requirements.
 
-The main focus is on the interactions between the **users/people**, **issuer/issuers** and **brands**.
+It primarily addresses the interactions among users, issuers, and brands.
 
-Please see the Swagger documentation for example responses, available at `/docs`.
+Please alse refer to the Swagger documentation available at /docs.
