@@ -129,3 +129,4 @@ Example response:
 ```
 
 7. Ensure that it is in the `PresentationVerified` state.
+8. The data is in a JWT format that can be decoded (Example website for decoding https://jwt.io/).
