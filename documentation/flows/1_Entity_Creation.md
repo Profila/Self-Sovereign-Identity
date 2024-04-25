@@ -39,7 +39,7 @@ curl -X 'POST' \
 
 ```json
 {
-  "userId": "180ebf7b-d49f-4910-92b8-3aaea4ee5a3e",
+  "entityId": "180ebf7b-d49f-4910-92b8-3aaea4ee5a3e",
   "walletId": "ffcec57e-4821-4565-9479-5d91cd25b522",
   "did": "did:prism:027dbb710f7c3f3301b0e387a40d2e13a8c46edbba63e4fca190987f1182b2ca:CnsKeRI6CgZhdXRoLTEQBEouCglzZWNwMjU2azESIQLhK1MWHE_qDN70ZVGz-d5oglBctpZaekrTiUeNYPcV0BI7CgdtYXN0ZXIwEAFKLgoJc2VjcDI1NmsxEiED8PxAsrLfOJSpNxF1lWBMa6DkYoANOvB-J6uQXs4Qp_Y",
   "entityApiKey": "user.wgTLw6hlclMBb7aNLFIQ0xw3fCxvmPR1"
