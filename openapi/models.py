@@ -1477,7 +1477,7 @@ class EntityCreated(BaseModel):
         description='New prism did of the new entity.',
         example='did:prism:027dbb710f7c3f3301b0e387a40d2e13a8c46edbba63e4fca190987f1182b2ca:CnsKeRI6CgZhdXRoLTEQBEouCglzZWNwMjU2azESIQLhK1MWHE_qDN70ZVGz-d5oglBctpZaekrTiUeNYPcV0BI7CgdtYXN0ZXIwEAFKLgoJc2VjcDI1NmsxEiED8PxAsrLfOJSpNxF1lWBMa6DkYoANOvB-J6uQXs4Qp_Y',
     )
-    userApiKey: str = Field(
+    entityApiKey: str = Field(
         ...,
         description='API key of the new entity.',
         example='user.wgTLw6hlclMBb7aNLFIQ0xw3fCxvmPR1',
