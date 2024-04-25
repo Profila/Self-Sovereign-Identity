@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Header, HTTPException, Path
 from fastapi.responses import JSONResponse
 from os import environ as env
-from pprint import pprint
 import swagger_client
 from swagger_client import ApiClient
 from swagger_client.api.did_api import DIDApi
