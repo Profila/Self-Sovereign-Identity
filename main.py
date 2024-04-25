@@ -15,8 +15,8 @@ from swagger_client.api.issue_credentials_protocol_api import IssueCredentialsPr
 from swagger_client.configuration import Configuration
 from swagger_client.api.present_proof_api import PresentProofApi
 from swagger_client.rest import ApiException
-from models import *
-from openapi.models import ConnectionsPage, CredentialSchemaResponse, DIDResolutionResult, EntityCreated, EntityResponse, EntityResponsePage, IssueCredentialRecord, IssueCredentialRecordPage, ManagedDIDPage, PresentationStatus, PresentationStatusPage, WalletDetail, WalletDetailPage, Connection
+from models_custom import *
+from openapi.models import ConnectionsPage, CredentialSchemaResponse, DIDResolutionResult, EntityCreated, EntityResponse, EntityResponsePage, IssueCredentialRecord, ManagedDIDPage, PresentationStatus, PresentationStatusPage, WalletDetail, WalletDetailPage, Connection
 from utils import generate_api_key, serialize, generate_challenge
 import time
 import logging
