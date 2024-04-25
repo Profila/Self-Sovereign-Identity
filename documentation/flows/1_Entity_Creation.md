@@ -1,40 +1,43 @@
 # Entity Creation
 
-The api can create three types of entities namely
-1. User/Person
-    - An entity that is able to receive VCs (Verifiable Credentials) and share the data in those VCs with brands via presentations.
-2. Issuer
-    - An entity that can create schemas (Templates with certain data fields to store user information) and issue VCs to users that are based on those schemas.
-3. Brand
+The API can create three types of entities:
+1. **User/Person**
+    - An entity capable of receiving Verifiable Credentials (VCs) and sharing the data in those VCs with brands via presentations.
+2. **Issuer**
+    - An entity that can create schemas (templates with specific data fields to store user information) and issue VCs to users based on those schemas.
+3. **Brand**
     - An entity that can request data from users via presentation requests.
 
 ## Create Entity Flow
 
-To create a entity, follow these steps:
+To create an entity, follow these steps:
 
 1. Send a POST request to the `/create-entity/{entity_type}` endpoint.
-2. {entity_type} should be "user", "issuer" or "brand".
-3. Request body example:
-    - {
-        "name": "Test_User"
-      }
-4. Upon successful creation, the API will return a response with the newly created user/person entity. A wallet and authorization api key is also created for the entity.
+2. Replace `{entity_type}` with "user", "issuer", or "brand".
+3. Example of a request body:
+    ```json
+    {
+      "name": "Test_User"
+    }
+    ```
+4. Upon successful creation, the API will return a response with details of the newly created entity. A wallet and an authorization API key are also generated for the entity.
 
-Example request:
+### Example Request
 
-```
+```bash
 curl -X 'POST' \
   'http://129.151.179.222:8000/create-entity/user' \
   -H 'accept: application/json' \
   -H 'x-admin-api-key: my-admin-token' \
   -H 'Content-Type: application/json' \
   -d '{
-  "name": "Elmer_Test"
-}'
+      "name": "Elmer_Test"
+    }'
 ```
-Example response:
 
-```
+### Example Response
+
+```json
 {
   "userId": "180ebf7b-d49f-4910-92b8-3aaea4ee5a3e",
   "walletId": "ffcec57e-4821-4565-9479-5d91cd25b522",
@@ -43,8 +46,8 @@ Example response:
 }
 ```
 
-Note that the api key will start with "user.*", "issuer.*" or "brand.*" depending on the type of entity.
+Note that the API key will start with "user.", "issuer.", or "brand." depending on the type of entity created.
 
 ## View Entity
-To verify that an entity is created use the `/view-entity/{id}` endpoint where `{id}` is the `entityId` returned in the previous step.
+To verify that an entity has been created, use the `/view-entity/{id}` endpoint where `{id}` is the `entityId` returned in the previous step.
 
