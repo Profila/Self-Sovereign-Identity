@@ -20,7 +20,7 @@ To create an entity, follow these steps:
       "name": "Test_User"
     }
     ```
-4. Upon successful creation, the API will return a response with details of the newly created entity. A wallet and an authorization API key are also generated for the entity.
+4. Upon successful creation, the API will return a response with details of the newly created entity. A wallet and an authorization API key is also generated for the entity.
 
 ### Example Request
 
