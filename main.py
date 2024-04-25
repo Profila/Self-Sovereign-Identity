@@ -136,7 +136,7 @@ def list_users(x_admin_api_key: str = Header(None)) -> EntityResponsePage:
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
     
 
-@app.get("/get-entity/{id}", tags=["Admin"])
+@app.get("/view-entity/{id}", tags=["Admin"])
 def get_entity(id: str = Path(..., description="Entity ID"), x_admin_api_key: str = Header(None)) -> EntityResponse:
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -172,7 +172,7 @@ def list_wallets(x_admin_api_key: str = Header(None)) -> WalletDetailPage:
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
-@app.get("/get-wallet/{id}", tags=["Admin"])
+@app.get("/view-wallet/{id}", tags=["Admin"])
 def get_wallet(id: str = Path(..., description="Wallet ID"), x_admin_api_key: str = Header(None)) -> WalletDetail:
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -255,7 +255,7 @@ def establish_connection_to_user(requestor_api_key: str = Header(None), user_api
         raise HTTPException(status_code=500)
 
 
-@app.get("/get-connection/{id}", tags=["Issuer", "Brand"])
+@app.get("/view-connection/{id}", tags=["Issuer", "Brand"])
 def get_connection(id: str = Path(..., description="Connection ID"), requestor_api_key: str = Header(None)) -> Connection:
     client.set_default_header('apiKey', requestor_api_key)
 
@@ -313,6 +313,9 @@ def create_schema(request: CreateSchemaRequest, issuer_did: str, issuer_api_key:
                             )
 
         schemaRes = schemaApi.create_schema(credential_schema_input)
+
+        logger.info(f"Created new schema: {schemaRes.guid}")
+
         return schemaRes
     except ApiException as e:
         logger.info(f"Exception when calling SchemaRegistryApi->create_schema: {e}\n")
@@ -323,7 +326,7 @@ def create_schema(request: CreateSchemaRequest, issuer_did: str, issuer_api_key:
 
 # Get Shema by id
 
-@app.get("/get-schema/{id}", tags=["Issuer"])
+@app.get("/view-schema/{id}", tags=["Issuer"])
 def get_schema(id: str = Path(..., description="Schema ID"), issuer_api_key: str = Header(None)) -> CredentialSchemaResponse:
     client.set_default_header('apiKey', issuer_api_key)
 
@@ -412,7 +415,7 @@ def accept_credential_offer(subjectId: str, id: str = Path(..., description="Off
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
     
 
-@app.get("/get-credential/{id}", tags=["User"])
+@app.get("/view-credential/{id}", tags=["User"])
 def get_credential(id: str = Path(..., description="Credential ID"), user_api_key: str = Header(None)) -> IssueCredentialRecord:
     client.set_default_header('apiKey', user_api_key)
 
@@ -485,7 +488,7 @@ async def list_presentation_requests(requestor_api_key: str = Header(None)) -> P
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
-@app.get("/get-presentation-request/{id}", tags=["User", "Brand"])
+@app.get("/view-presentation-request/{id}", tags=["User", "Brand"])
 async def get_presentation_request(id: str = Path(..., description="Presentation Request ID"), requestor_api_key: str = Header(None)) -> PresentationStatus:
     client.set_default_header('apiKey', requestor_api_key)
 
