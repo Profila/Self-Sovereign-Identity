@@ -43,5 +43,8 @@ Example response:
 }
 ```
 
+Note that the api key will start with "user.*", "issuer.*" or "brand.*" depending on the type of entity.
+
 ## View Entity
 To verify that an entity is created use the `/view-entity/{id}` endpoint where `{id}` is the `entityId` returned in the previous step.
+
