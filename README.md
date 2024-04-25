@@ -4,7 +4,7 @@
 
 1. Start a Prism Agent with the following settings (Tested with version 1.31.0):
 
-    -   Add the following to the file `infrastructure/local/.env-issuer`
+    -   Create the file `infrastructure/local/.env-issuer` in Prism and add the folling content. 
 
         ```
         ADMIN_TOKEN=my-admin-token
@@ -27,4 +27,4 @@
 
 3. Create a .env file (see .env-example)
 
-4. Run docker-compose up
+4. Start the API by running `docker-compose up`
