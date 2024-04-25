@@ -1,4 +1,4 @@
-# Verifyable Credential Presentation
+# Verifiable Credential Presentation
 
 A brand can request a presentation from a user if they have an established connection between them.
 
@@ -7,7 +7,7 @@ A brand can request a presentation from a user if they have an established conne
 To make a presentation request, follow these steps:
 
 1. Send a POST request to the brand `/create-presentation-request/` endpoint.
-2. Provide the connection id and brand api key. The trusted issuer did is its short form did of the issuer that issued the VC to the user.
+2. Provide the connection id and brand API key. The trusted issuer did is its short form did of the issuer that issued the VC to the user.
 3. Upon success, the API will return a response with the newly created presentation request information.
 
 Example request:
@@ -38,7 +38,7 @@ Example response:
 
 To view presentation requests execute the following steps:
 
-1. Send a GET request to the **USERs** `/list-presentation-requests/` to check for a new request in the `RequestReceived` state. 
+1. Send a GET request to the **USER** `/list-presentation-requests/` to check for a new request in the `RequestReceived` state. 
     - Note that the id is different than it was in the response when the request was created by the brand. Each entity tracks objects with their own ids.
 2. Provide the user api key. Note that in the given example only one request is present but there could be more than one.
 

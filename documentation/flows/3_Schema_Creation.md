@@ -7,7 +7,7 @@ In order for an issuer to issue a VC to a user a schema will be needed first (A 
 To create a schema, follow these steps:
 
 1. Send a POST request to the issuer `/create-schema/` endpoint.
-2. Provide the issuer did and issuer api key. The issuer did should be in short form. 
+2. Provide the issuer DID and issuer api key. The issuer DID should be in short form. 
     - Short form example:
         - did:prism:dbd0499ca917cddde21b0a0cfa576f83287b156d9c8af0deecdf139b9c20904e
     - Long form example:

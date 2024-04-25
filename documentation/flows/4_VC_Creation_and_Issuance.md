@@ -72,7 +72,7 @@ Example response:
 
 To view VC offers execute the following steps:
 
-1. Send a GET request to the **USERs** `/list-credential-offers/` to check for a new offer in the `OfferReceived` state. 
+1. Send a GET request to the **USER** `/list-credential-offers/` to check for a new offer in the `OfferReceived` state. 
     - Note that the id is different than it was in the response when the offer was created by the issuer. Each entity tracks objects with their own ids.
 2. Provide the user api key. Note that in the given example only one offer is present but there could be more than one.
 

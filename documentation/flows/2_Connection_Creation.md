@@ -9,7 +9,7 @@ Connections will need to be established between the following entities:
 To create a connection, follow these steps:
 
 1. Send a GET request to the `/establish-connection-to-user/` endpoint.
-2. Provide both the requestor and user entities api-keys (`requestor-api-key` is either the issuer or brand api key). *Dev note: We can split these up into seperate requests if needed.*
+2. Provide both the requestor and user entities api-keys (`requestor-api-key` is either the issuer or brand api key). *Dev note: We can split these up into separate requests if needed.*
 4. Upon successful creation, the API will return a response with the newly created connections information.
 
 Example request:
