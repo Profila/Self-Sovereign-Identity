@@ -81,14 +81,14 @@ def create_entity(entity_type: EntityType, request: CreateEntityRequest, x_admin
         entityRes = entityApi.create_entity({"name": request.name, "walletId": walletRes.id})
 
         # Provide Auth method for new entity
-        userApiKey = f"{entity_type.value}." + generate_api_key()
-        entityApi.add_entity_api_key_authentication({"entityId": entityRes.id, "apiKey": userApiKey})
+        entityApiKey = f"{entity_type.value}." + generate_api_key()
+        entityApi.add_entity_api_key_authentication({"entityId": entityRes.id, "apiKey": entityApiKey})
 
         # Set appropriate purpose based on entity type
         purpose = "authentication" if entity_type == EntityType.USER else "assertionMethod"
 
         # Create a DID for the entity
-        client.set_default_header('apiKey', userApiKey)
+        client.set_default_header('apiKey', entityApiKey)
         didApi = DIDRegistrarApi(client)
         didRes = didApi.post_did_registrar_dids({
             "documentTemplate": {
@@ -101,10 +101,10 @@ def create_entity(entity_type: EntityType, request: CreateEntityRequest, x_admin
 
         # Build response with required info from all requests
         response = {
-            "userId": entityRes.id,
+            "entityId": entityRes.id,
             "walletId": walletRes.id,
             "did": didRes.long_form_did,
-            "userApiKey": userApiKey
+            "entityApiKey": entityApiKey
         }
 
         return JSONResponse(content=response, status_code=201)
@@ -118,7 +118,7 @@ def create_entity(entity_type: EntityType, request: CreateEntityRequest, x_admin
         raise HTTPException(status_code=500)
 
 
-@app.get("/list-all-entities", tags=["Admin"])
+@app.get("/list-all-entities/", tags=["Admin"])
 def list_users(x_admin_api_key: str = Header(None)) -> EntityResponsePage:
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -154,7 +154,7 @@ def get_entity(id: str = Path(..., description="Entity ID"), x_admin_api_key: st
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
-@app.get("/list-all-wallets", tags=["Admin"])
+@app.get("/list-all-wallets/", tags=["Admin"])
 def list_wallets(x_admin_api_key: str = Header(None)) -> WalletDetailPage:
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
@@ -286,7 +286,7 @@ def list_connections(requestor_api_key: str = Header(None)) -> ConnectionsPage:
     
 # Create new schema
 
-@app.post("/create-schema", tags=["Issuer"])
+@app.post("/create-schema/", tags=["Issuer"])
 def create_schema(request: CreateSchemaRequest, issuer_did: str, issuer_api_key: str = Header(None)) -> CredentialSchemaResponse:
     client.set_default_header('apiKey', issuer_api_key)
 
@@ -341,7 +341,7 @@ def get_schema(id: str = Path(..., description="Schema ID"), issuer_api_key: str
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
     
 # TODO Continue adding models here
-@app.post("/offer-credential", tags=["Issuer"])
+@app.post("/offer-credential/", tags=["Issuer"])
 def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api_key: str = Header(None)) -> IssueCredentialRecord:
     client.set_default_header('apiKey', issuer_api_key)
 
@@ -380,7 +380,7 @@ def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
-@app.get("/list-credential-offers", tags=["User"])
+@app.get("/list-credential-offers/", tags=["User"])
 def list_credential_offers(user_api_key: str = Header(None)) -> List[IssueCredentialRecord]:
     client.set_default_header('apiKey', user_api_key)
 
@@ -519,20 +519,3 @@ def present_credential(vc_record_id: str, id: str = Path(..., description="Prese
     except ApiException as e:
         logger.info("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
-
-
-# @app.post("/accept-presentation-response/", tags=["Brand"])
-# def accept_presentation_response(presentation_id: str, brand_api_key: str = Header(None)) -> PresentationStatus:
-#     client.set_default_header('apiKey', brand_api_key)
-
-#     presentationApi = PresentProofApi(client)
-
-#     body = swagger_client.RequestPresentationAction(action="presentation-accept")
-
-#     try:
-#         res = presentationApi.update_presentation(body=body, presentation_id=presentation_id)
-#         logger.info("Presented credential: %s\n" % serialize(res))
-#         return res
-#     except ApiException as e:
-#         logger.info("Exception when calling PresentProofApi->update_presentation: %s\n" % e)
-#         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
