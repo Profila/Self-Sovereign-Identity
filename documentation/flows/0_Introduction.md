@@ -4,4 +4,4 @@ This documentation outlines the flows required to meet Profila’s Self-Sovereig
 
 It primarily addresses the interactions among users, issuers, and brands.
 
-Please also refer to the Swagger documentation available at /docs.
+Please also refer to the Swagger documentation available at `/docs`.
