@@ -2,7 +2,7 @@
 
 ## Startup Instructions
 
-1. Start a Prism Agent with the following settings (Tested with version 1.31.0):
+1. Start a Prism Agent (https://github.com/hyperledger-labs/open-enterprise-agent) with the following settings (Tested with version 1.31.0):
 
     -   Create the file `infrastructure/local/.env-issuer` in Prism and add the folling content. Take note of the `ADMIN_TOKEN` value. 
 
