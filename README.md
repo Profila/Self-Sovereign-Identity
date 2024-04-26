@@ -2,6 +2,8 @@
 
 ## Startup Instructions
 
+### Prism (aka Identus) Agent
+
 1. Start a Prism Agent (https://github.com/hyperledger-labs/open-enterprise-agent) with the following settings (Tested with version 1.31.0):
 
     -   Create the file `infrastructure/local/.env-issuer` in Prism and add the folling content. Take note of the `ADMIN_TOKEN` value. 
@@ -24,7 +26,8 @@
         ````
         
 
+### Prism API
 
-3. Create a .env file (see .env-example)
+1. Create a .env file (see .env-example)
 
-4. Start the API by running `docker-compose up`
+2. Start the API by running `docker-compose up`
