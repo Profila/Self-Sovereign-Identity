@@ -46,11 +46,6 @@ tags_metadata = [
         "name": "Brand",
         "description": "Endpoints for brand interactions. (Requires brand api key)."
     },
-    {
-        "name": "General",
-        "description": "Endpoints for general interactions. (Requires no api key)."
-    },
-
 ]
 
 app = FastAPI(openapi_tags=tags_metadata, title="Profila Prism API", description="API for Prism SSI operations", version="0.1.0")
