@@ -340,7 +340,7 @@ def get_schema(id: str = Path(..., description="Schema ID"), issuer_api_key: str
         logger.info(f"Exception when calling SchemaRegistryApi->get_schema_by_id: {e}\n")
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
     
-# TODO Continue adding models here
+
 @app.post("/offer-credential/", tags=["Issuer"])
 def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api_key: str = Header(None)) -> IssueCredentialRecord:
     client.set_default_header('apiKey', issuer_api_key)

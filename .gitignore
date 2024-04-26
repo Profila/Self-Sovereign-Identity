@@ -5,7 +5,7 @@
 __pycache__
 .pytest_cache
 htmlcov
-dist
+# dist
 site
 .coverage
 coverage.xml

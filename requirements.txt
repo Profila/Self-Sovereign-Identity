@@ -31,7 +31,7 @@ PyYAML==6.0.1
 six==1.16.0
 sniffio==1.3.1
 starlette==0.37.2
-swagger-client @ file:///home/ubuntu/api/prism-api/swagger-gen/dist/swagger_client-1.0.0-py3-none-any.whl#sha256=5f80c5d32ac3b8046bd93ffd86616b692440d6fc00c46b8275a2599fbec04f40
+#swagger-client @ file:///home/ubuntu/api/prism-api/swagger-gen/dist/swagger_client-1.0.0-py3-none-any.whl#sha256=5f80c5d32ac3b8046bd93ffd86616b692440d6fc00c46b8275a2599fbec04f40
 toml==0.10.2
 tomli==2.0.1
 typing_extensions==4.11.0
