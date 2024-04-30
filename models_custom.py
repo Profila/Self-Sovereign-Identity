@@ -24,3 +24,10 @@ class CreateSchemaRequest(BaseModel):
     schemaId: str = Field(..., example="https://profila.com/profila-profile-1.0.0")
     schemaTags: List[str] = Field(..., example=["test"])
     attributes: List[Attribute] = Field(...)
+
+class NewApiKey(BaseModel):
+    newApiKey: str = Field(
+        ...,
+        description='API key of the new entity.',
+        example='user.wgTLw6hlclMBb7aNLFIQ0xw3fCxvmPR1',
+    )

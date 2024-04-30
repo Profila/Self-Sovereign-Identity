@@ -1455,12 +1455,6 @@ class UpdateManagedDIDRequest(BaseModel):
     actions: Optional[List[UpdateManagedDIDRequestAction]] = None
 
 
-# response = {
-#             "userId": entityRes.id,
-#             "walletId": walletRes.id,
-#             "did": didRes.long_form_did,
-#             "userApiKey": userApiKey
-#         }
 class EntityCreated(BaseModel):
     userId: str = Field(
         ...,

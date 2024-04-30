@@ -113,6 +113,25 @@ def create_entity(entity_type: EntityType, request: CreateEntityRequest, x_admin
         raise HTTPException(status_code=500)
 
 
+@app.post("/create-new-entity-api-key/{entity_id}", tags=["Admin"])
+def create_entity_api_key(entity_type: EntityType, entity_id: str = Path(..., description="Entity ID"), x_admin_api_key: str = Header(None)) -> NewApiKey:
+    client.set_default_header('x-admin-api-key', x_admin_api_key)
+
+    try:
+        # Create a new API key for the entity
+        entityApi = IdentityAndAccessManagementApi(client)
+        entityApiKey = f"{entity_type.value}." + generate_api_key()
+        entityApi.add_entity_api_key_authentication({"entityId": entity_id, "apiKey": entityApiKey})
+
+        logger.info(f"Created new API key for entity: {entity_id}")
+
+        return {"newApiKey": entityApiKey}
+
+    except ApiException as e:
+        logger.error(f"Exception when creating API key for entity: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
+
+
 @app.get("/list-all-entities/", tags=["Admin"])
 def list_users(x_admin_api_key: str = Header(None)) -> EntityResponsePage:
     client.set_default_header('x-admin-api-key', x_admin_api_key)
