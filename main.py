@@ -232,7 +232,7 @@ def list_user_dids(user_api_key: str = Header(None)) -> ManagedDIDPage:
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
-@app.get("/establish-connection-to-user/", tags=["Issuer", "Brand"])
+@app.post("/establish-connection-to-user/", tags=["Issuer", "Brand"])
 def establish_connection_to_user(requestor_api_key: str = Header(None), user_api_key: str = Header(None)) -> Connection:
     client.set_default_header('apiKey', requestor_api_key)
 
