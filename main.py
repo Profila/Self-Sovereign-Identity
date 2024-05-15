@@ -251,6 +251,10 @@ def establish_connection_to_user(requestor_api_key: str = Header(None), user_api
         client.set_default_header('apiKey', user_api_key)
         acceptConnRes = connectionApi.accept_connection_invitation({"invitation": rawInvitation})
 
+        logger.info("User accepting credential: %s\n" % serialize(acceptConnRes))
+        logger.info(f"Host: {hostAddress}")
+        logger.info(f"Prism URL: {config.host}")
+
         # Issuer checks connection status
         client.set_default_header('apiKey', requestor_api_key)
         checkConnRes = connectionApi.get_connection(createConnRes.thid)
