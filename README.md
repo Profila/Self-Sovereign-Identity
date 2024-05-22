@@ -22,7 +22,7 @@
         ```
 2. Start Prism Agent with the following command:
     -   ```bash
-        ./infrastructure/local/run.sh -n agent -b -e ./infrastructure/local/.env-tenant -p 8080 -d "$(ip addr show $(ip route show default | awk '/default/ {print $5}') | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)"
+        ./infrastructure/local/run.sh -n agent -b -e ./infrastructure/local/.env-tenant -p 8080 -d $(docker run --rm --net=host eclipse/che-ip)
         ````
         
 
