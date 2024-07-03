@@ -2,11 +2,11 @@
 
 ## Startup Instructions
 
-### Prism (aka Identus) Agent
+### Identus Agent
 
-1. Start a Prism Agent (https://github.com/hyperledger-labs/open-enterprise-agent) with the following settings:
+1. Start a Identus Agent (https://github.com/hyperledger-labs/open-enterprise-agent) with the following settings:
 
-    -   Create the file `infrastructure/local/.env-tenant` in Prism and add the folling content. Take note of the `ADMIN_TOKEN` value. 
+    -   Create the file `infrastructure/local/.env-tenant` in Identus and add the folling content. Take note of the `ADMIN_TOKEN` value. 
 
         ```
         ADMIN_TOKEN=my-admin-token
@@ -21,13 +21,13 @@
         PG_PORT=5434
 
         ```
-2. Start Prism Agent with the following command:
+2. Start Identus Agent with the following command:
     -   ```bash
         ./infrastructure/local/run.sh -n agent -b -e ./infrastructure/local/.env-tenant -p 8080 -d "$(ip addr show $(ip route show default | awk '/default/ {print $5}') | grep 'inet ' | awk '{print $2}' | cut -d/ -f1)"
         ````
         
 
-### Prism API
+### Identus SSI API
 
 1. Create a .env file (see .env-example)
 
