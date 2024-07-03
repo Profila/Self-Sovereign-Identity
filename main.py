@@ -48,11 +48,11 @@ tags_metadata = [
     },
 ]
 
-app = FastAPI(openapi_tags=tags_metadata, title="Profila Prism API", description="API for Prism SSI operations", version="0.1.0")
+app = FastAPI(openapi_tags=tags_metadata, title="Profila Identus API", description="API for Identus SSI operations", version="0.1.0")
 
-# Create a Configuration object with a new Prism API URL
+# Create a Configuration object with a new Identus API URL
 config = Configuration()
-config.host = env['PRISM_URL']
+config.host = env['IDENTUS_URL']
 hostAddress = env['HOST_ADDRESS']
 
 client = ApiClient(config)
@@ -205,7 +205,7 @@ def get_wallet(id: str = Path(..., description="Wallet ID"), x_admin_api_key: st
 
 
 @app.get("/resolve-did/{did}", tags=["Admin"])
-def resolve_did(did: str = Path(..., description="The DID to resolve"), x_admin_api_key: str = Header(None)) -> DIDResolutionResult:
+def resolve_did(did: str = Path(..., description="The DID to resolve (Long form)"), x_admin_api_key: str = Header(None)) -> DIDResolutionResult:
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
     didApi = DIDApi(client)
@@ -253,7 +253,7 @@ def establish_connection_to_user(requestor_api_key: str = Header(None), user_api
 
         logger.info("User accepting credential: %s\n" % serialize(acceptConnRes))
         logger.info(f"Host: {hostAddress}")
-        logger.info(f"Prism URL: {config.host}")
+        logger.info(f"Identus URL: {config.host}")
 
         # Issuer checks connection status
         client.set_default_header('apiKey', requestor_api_key)
@@ -369,7 +369,7 @@ def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api
         # Create Credential Offer
         offerData = {
             "validityPeriod": 86400,  # One day
-            "schemaId": f"http://{hostAddress}:8080/prism-agent/schema-registry/schemas/{schema_id}",
+            "schemaId": f"http://{hostAddress}:8080/cloud-agent/schema-registry/schemas/{schema_id}",
             "issuingDID": request.issuerDid,
             "claims": {
                 # loop through claims
