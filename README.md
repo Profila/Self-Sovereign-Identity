@@ -4,7 +4,7 @@
 
 ### Prism (aka Identus) Agent
 
-1. Start a Prism Agent (https://github.com/hyperledger-labs/open-enterprise-agent) with the following settings (Tested with version 1.31.0):
+1. Start a Prism Agent (https://github.com/hyperledger-labs/open-enterprise-agent) with the following settings:
 
     -   Create the file `infrastructure/local/.env-tenant` in Prism and add the folling content. Take note of the `ADMIN_TOKEN` value. 
 
@@ -13,12 +13,13 @@
         API_KEY_ENABLED=true
         API_KEY_AUTO_PROVISIONING=false
         DEFAULT_WALLET_ENABLED=false
-        PRISM_AGENT_VERSION=1.18.0
-        PRISM_NODE_VERSION=2.2.1
+        AGENT_VERSION=1.37.0
+        PRISM_NODE_VERSION=2.3.0
         PORT=8080
-        NETWORK=prism
+        NETWORK=identus
         VAULT_DEV_ROOT_TOKEN_ID=root
         PG_PORT=5434
+
         ```
 2. Start Prism Agent with the following command:
     -   ```bash
