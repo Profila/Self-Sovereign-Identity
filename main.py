@@ -523,14 +523,20 @@ def get_credential(id: str = Path(..., description="Credential ID"), user_api_ke
 
 
 @app.get("/list-received-credentials/", tags=["User"])
-def list_received_credentials(user_api_key: str = Header(None)) -> List[IssueCredentialRecord]:
+def list_received_credentials(user_api_key: str = Header(None), thid: Optional[str] = Query(None, description="Thread ID (optional)")) -> List[IssueCredentialRecord]:
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
 
     try:
         # List Holder Credentials
-        res = issueCredApi.get_credential_records()
+
+        res = None
+
+        if thid is None:
+            res = issueCredApi.get_credential_records()
+        else:
+            res = issueCredApi.get_credential_records(thid = thid)
 
         # Filter out the credentials that are not in CredentialReceived state
         credentials = [credential for credential in res.contents if credential.protocol_state == "CredentialReceived"]
