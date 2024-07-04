@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header, HTTPException, Path
+from fastapi import FastAPI, Header, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
 from os import environ as env
 import swagger_client
@@ -20,6 +20,7 @@ from utils import generate_api_key, serialize, generate_challenge
 import time
 import logging
 import enum
+from typing import List, Optional
 
 logging.basicConfig(
     level=logging.INFO,
@@ -288,15 +289,23 @@ def get_connection(id: str = Path(..., description="Connection ID"), requestor_a
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
-@app.get("/list-connections/", tags=["Issuer", "Brand"])
-def list_connections(requestor_api_key: str = Header(None)) -> ConnectionsPage:
+@app.get("/list-connections/", tags=["Issuer", "Brand", "User"])
+def list_connections(requestor_api_key: str = Header(None), thid: Optional[str] = Query(None, description="Thread ID (optional)")) -> ConnectionsPage:
     client.set_default_header('apiKey', requestor_api_key)
 
     connectionApi = ConnectionsManagementApi(client)
 
     try:
         # Check connection status
-        res = connectionApi.get_connections()
+        
+        res = None
+
+        if thid is None:
+            res = connectionApi.get_connections()
+        else:
+            res = connectionApi.get_connections(thid = thid)
+
+        
         return res.to_dict()
     except ApiException as e:
         logger.info(f"Exception when calling ConnectionsManagementApi->get_connections: {e}")
@@ -399,15 +408,21 @@ def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api
 
 
 @app.get("/list-credential-offers/", tags=["User"])
-def list_credential_offers(user_api_key: str = Header(None)) -> List[IssueCredentialRecord]:
+def list_credential_offers(user_api_key: str = Header(None), thid: Optional[str] = Query(None, description="Thread ID (optional)")) -> List[IssueCredentialRecord]:
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
 
     try:
         # List Holder Credential Offers
-        holderOffersRes = issueCredApi.get_credential_records()
-        
+        holderOffersRes = None
+
+        if thid is None:
+            holderOffersRes = issueCredApi.get_credential_records()
+        else:
+            holderOffersRes = issueCredApi.get_credential_records(thid = thid)
+
+
         # Filter out the offers that are not in OfferReceived state
         holderOffers = [offer for offer in holderOffersRes.contents if offer.protocol_state == "OfferReceived"]
         
@@ -493,13 +508,19 @@ async def create_presentation_request(connection_id: str, trusted_issuer_did: st
 
 
 @app.get("/list-presentation-requests/", tags=["User", "Brand"])
-async def list_presentation_requests(requestor_api_key: str = Header(None)) -> PresentationStatusPage:
+async def list_presentation_requests(requestor_api_key: str = Header(None), thid: Optional[str] = Query(None, description="Thread ID (optional)")) -> PresentationStatusPage:
     client.set_default_header('apiKey', requestor_api_key)
     
     presentationApi = swagger_client.PresentProofApi(client)
     
     try:
-        res = presentationApi.get_all_presentation()
+        res = None
+
+        if thid is None:
+            res = presentationApi.get_all_presentation()
+        else:
+            res = presentationApi.get_all_presentation(thid = thid)
+            
         return res
     except swagger_client.ApiException as e:
         logger.info(f"Exception when calling PresentProofApi->get_all_presentation: {e}")
