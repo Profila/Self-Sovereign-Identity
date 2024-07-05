@@ -8,7 +8,7 @@
 
     Define the following environment variables in a .env file:
 
-        ```
+    ```bash
         ADMIN_TOKEN=changethis
         API_KEY_ENABLED=true
         API_KEY_AUTO_PROVISIONING=true
@@ -22,12 +22,12 @@
 
         PGA_DEFAULT_EMAIL=changethis@mail.com
         PGA_DEFAULT_PASSWORD=changethis
-        ```
+    ````
 
 2. Start Identus Agent with the following command (While in ./identus/scripts/):
-    -   ```bash
+    ```bash
         ./run.sh -n agent -b -e ./.env -p 8080 -d $(docker run --rm --net=host eclipse/che-ip)
-        ````
+    ````
         
 
 ### Identus SSI API
@@ -36,4 +36,4 @@
 
 2. Create a .env file (see .env-example)
 
-3. Start the API by running `docker-compose up`
+3. Start the API by running `docker compose up -d`

@@ -601,7 +601,7 @@ async def get_presentation_request(id: str = Path(..., description="Presentation
     try:
         res = presentationApi.get_presentation(id)
         return res
-    except swagger_client.ApiException as e:
+    except Exception as e:
         logger.info(f"Exception when calling PresentProofApi->get_presentation: {e}")
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
     
