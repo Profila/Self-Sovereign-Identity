@@ -10,7 +10,7 @@ services:
     environment:
       POSTGRES_MULTIPLE_DATABASES: "pollux,connect,agent,node_db"
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
     volumes:
       - pg_data_db:/var/lib/postgresql/data
       - ./postgres/init-script.sh:/docker-entrypoint-initdb.d/init-script.sh
@@ -18,7 +18,7 @@ services:
     ports:
       - "127.0.0.1:${PG_PORT:-5432}:5432"
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "postgres", "-d", "agent"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d agent"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,6 +47,7 @@ services:
     image: ghcr.io/input-output-hk/prism-node:${PRISM_NODE_VERSION}
     environment:
       NODE_PSQL_HOST: db:5432
+      NODE_PSQL_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       NODE_REFRESH_AND_SUBMIT_PERIOD:
       NODE_MOVE_SCHEDULED_TO_PENDING_PERIOD:
       NODE_WALLET_MAX_TPS:
@@ -77,17 +78,17 @@ services:
       POLLUX_DB_PORT: 5432
       POLLUX_DB_NAME: pollux
       POLLUX_DB_USER: postgres
-      POLLUX_DB_PASSWORD: postgres
+      POLLUX_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       CONNECT_DB_HOST: db
       CONNECT_DB_PORT: 5432
       CONNECT_DB_NAME: connect
       CONNECT_DB_USER: postgres
-      CONNECT_DB_PASSWORD: postgres
+      CONNECT_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       AGENT_DB_HOST: db
       AGENT_DB_PORT: 5432
       AGENT_DB_NAME: agent
       AGENT_DB_USER: postgres
-      AGENT_DB_PASSWORD: postgres
+      AGENT_DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POLLUX_STATUS_LIST_REGISTRY_PUBLIC_URL: http://${DOCKERHOST}:${PORT}/cloud-agent
       DIDCOMM_SERVICE_URL: http://${DOCKERHOST}:${PORT}/didcomm
       REST_SERVICE_URL: http://${DOCKERHOST}:${PORT}/cloud-agent
