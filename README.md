@@ -5,7 +5,6 @@
 ### Identus Agent
 
 1. cd to ./identus/scripts/
-
     Define the following environment variables in a .env file:
 
     ```bash
@@ -20,6 +19,7 @@
         VAULT_DEV_ROOT_TOKEN_ID=changethis
         PG_PORT=5434
 
+        POSTGRES_PASSWORD=changethis
         PGA_DEFAULT_EMAIL=changethis@mail.com
         PGA_DEFAULT_PASSWORD=changethis
     ````
