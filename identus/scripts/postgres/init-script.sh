@@ -12,7 +12,7 @@ function create_user_and_database() {
 	user_exists=$(psql -U "$POSTGRES_USER" -tAc "SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = '$app_user'")
 	if [ "$user_exists" != "1" ]; then
 		psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
-			      CREATE USER "$app_user" WITH PASSWORD 'password';
+			      CREATE USER "$app_user" WITH PASSWORD '$POSTGRES_PASSWORD';
 		EOSQL
 	else
 		echo "  User '$app_user' already exists, skipping creation."
