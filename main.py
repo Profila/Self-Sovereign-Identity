@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Header, HTTPException, Path
+from fastapi import FastAPI, Header, HTTPException, Path, Query
 from fastapi.responses import JSONResponse
 from os import environ as env
 import swagger_client
@@ -20,6 +20,7 @@ from utils import generate_api_key, serialize, generate_challenge
 import time
 import logging
 import enum
+from typing import List, Optional
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,11 +49,11 @@ tags_metadata = [
     },
 ]
 
-app = FastAPI(openapi_tags=tags_metadata, title="Profila Prism API", description="API for Prism SSI operations", version="0.1.0")
+app = FastAPI(openapi_tags=tags_metadata, title="Profila Identus API", description="API for Identus SSI operations", version="0.1.0")
 
-# Create a Configuration object with a new Prism API URL
+# Create a Configuration object with a new Identus API URL
 config = Configuration()
-config.host = env['PRISM_URL']
+config.host = env['IDENTUS_URL']
 hostAddress = env['HOST_ADDRESS']
 
 client = ApiClient(config)
@@ -205,7 +206,7 @@ def get_wallet(id: str = Path(..., description="Wallet ID"), x_admin_api_key: st
 
 
 @app.get("/resolve-did/{did}", tags=["Admin"])
-def resolve_did(did: str = Path(..., description="The DID to resolve"), x_admin_api_key: str = Header(None)) -> DIDResolutionResult:
+def resolve_did(did: str = Path(..., description="The DID to resolve (Long form)"), x_admin_api_key: str = Header(None)) -> DIDResolutionResult:
     client.set_default_header('x-admin-api-key', x_admin_api_key)
 
     didApi = DIDApi(client)
@@ -253,7 +254,7 @@ def establish_connection_to_user(requestor_api_key: str = Header(None), user_api
 
         logger.info("User accepting credential: %s\n" % serialize(acceptConnRes))
         logger.info(f"Host: {hostAddress}")
-        logger.info(f"Prism URL: {config.host}")
+        logger.info(f"Identus URL: {config.host}")
 
         # Issuer checks connection status
         client.set_default_header('apiKey', requestor_api_key)
@@ -272,6 +273,58 @@ def establish_connection_to_user(requestor_api_key: str = Header(None), user_api
         logger.info(f"Connection exception: {e}")
         raise HTTPException(status_code=500)
 
+@app.post("/establish-connection-to-user-confirm/", tags=["Issuer", "Brand"])
+def establish_connection_to_user_wait_for_connection_confirmation(requestor_api_key: str = Header(None), user_api_key: str = Header(None)) -> Connection:
+    client.set_default_header('apiKey', requestor_api_key)
+
+    connectionApi = ConnectionsManagementApi(client)
+
+    try:
+        # Issuer creates an invitation
+        createConnRes = connectionApi.create_connection({"label": "Connection request"})
+        invitation_url = createConnRes.invitation.invitation_url
+        rawInvitation = invitation_url.split('oob=')[1] if 'oob=' in invitation_url else None
+
+        if not rawInvitation:
+            raise ValueError("Invalid invitation URL format.")
+
+        # User accepts the invitation
+        client.set_default_header('apiKey', user_api_key)
+        acceptConnRes = connectionApi.accept_connection_invitation({"invitation": rawInvitation})
+
+        logger.info("User accepting credential: %s\n" % serialize(acceptConnRes))
+        logger.info(f"Host: {hostAddress}")
+        logger.info(f"Identus URL: {config.host}")
+
+        # Issuer checks connection status
+        client.set_default_header('apiKey', requestor_api_key)
+        checkConnRes = connectionApi.get_connection(createConnRes.thid)
+
+        retries = 50
+
+        for _ in range(retries):
+            logger.info(f"Checking connection status: {checkConnRes.state}")
+            if checkConnRes.state == "ConnectionResponseSent":
+                return checkConnRes
+            time.sleep(1)
+            checkConnRes = connectionApi.get_connection(createConnRes.thid)
+
+        raise HTTPException(status_code=400, detail="Connection not confirmed after "+str(retries)+" retries")
+
+    except ApiException as e:
+        logger.info(f"Exception when calling ConnectionsManagementApi: {e}")
+        raise HTTPException(status_code=e.status, detail={"reason": e.reason})
+    except ValueError as ve:
+        logger.info(f"Value Error: {ve}")
+        raise HTTPException(status_code=400, detail={"reason": str(ve)})
+    except HTTPException as e:
+        logger.info(f"Connection exception: {e}")
+        raise HTTPException(status_code=500, detail={"reason": e.detail})
+    except Exception as e:
+        logger.info(f"Connection exception: {e}")
+        raise HTTPException(status_code=500)
+    
+
 
 @app.get("/view-connection/{id}", tags=["Issuer", "Brand"])
 def get_connection(id: str = Path(..., description="Connection ID"), requestor_api_key: str = Header(None)) -> Connection:
@@ -288,15 +341,23 @@ def get_connection(id: str = Path(..., description="Connection ID"), requestor_a
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
 
 
-@app.get("/list-connections/", tags=["Issuer", "Brand"])
-def list_connections(requestor_api_key: str = Header(None)) -> ConnectionsPage:
+@app.get("/list-connections/", tags=["Issuer", "Brand", "User"])
+def list_connections(requestor_api_key: str = Header(None), thid: Optional[str] = Query(None, description="Thread ID (optional)")) -> ConnectionsPage:
     client.set_default_header('apiKey', requestor_api_key)
 
     connectionApi = ConnectionsManagementApi(client)
 
     try:
         # Check connection status
-        res = connectionApi.get_connections()
+        
+        res = None
+
+        if thid is None:
+            res = connectionApi.get_connections()
+        else:
+            res = connectionApi.get_connections(thid = thid)
+
+        
         return res.to_dict()
     except ApiException as e:
         logger.info(f"Exception when calling ConnectionsManagementApi->get_connections: {e}")
@@ -369,7 +430,7 @@ def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api
         # Create Credential Offer
         offerData = {
             "validityPeriod": 86400,  # One day
-            "schemaId": f"http://{hostAddress}:8080/prism-agent/schema-registry/schemas/{schema_id}",
+            "schemaId": f"http://{hostAddress}:8080/cloud-agent/schema-registry/schemas/{schema_id}",
             "issuingDID": request.issuerDid,
             "claims": {
                 # loop through claims
@@ -383,31 +444,44 @@ def offer_credential(request: CredentialOfferRequest, schema_id: str, issuer_api
 
         # Polling to check credential offer state
         issuerOfferRes = issueCredApi.get_credential_record(offerRes.record_id)
-        retries = 10
+        retries = 50
         for _ in range(retries):
+            logger.info(f"Checking credential offer state: {issuerOfferRes.protocol_state}")
             if issuerOfferRes.protocol_state == "OfferSent":
                 return issuerOfferRes
             time.sleep(1)  # Sleep for 1 second
             issuerOfferRes = issueCredApi.get_credential_record(offerRes.record_id)
 
         # If state is not OfferSent after retries
-        raise HTTPException(status_code=400, detail="Credential offer not sent after 10 retries")
+        raise HTTPException(status_code=500, detail=f"Credential offer not sent after {retries} retries")
 
     except ApiException as e:
         logger.info(f"Exception when calling IssueCredentialsProtocolApi->create_credential_offer: {e}\n")
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
+    except HTTPException as e:
+        logger.info(f"Exception when calling IssueCredentialsProtocolApi->create_credential_offer: {e}\n")
+        raise HTTPException(status_code=500, detail={"reason": e.detail})
+    except Exception as e:
+        logger.info(f"Exception when calling IssueCredentialsProtocolApi->create_credential_offer: {e}\n")
+        raise HTTPException(status_code=500)
 
 
 @app.get("/list-credential-offers/", tags=["User"])
-def list_credential_offers(user_api_key: str = Header(None)) -> List[IssueCredentialRecord]:
+def list_credential_offers(user_api_key: str = Header(None), thid: Optional[str] = Query(None, description="Thread ID (optional)")) -> List[IssueCredentialRecord]:
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
 
     try:
         # List Holder Credential Offers
-        holderOffersRes = issueCredApi.get_credential_records()
-        
+        holderOffersRes = None
+
+        if thid is None:
+            holderOffersRes = issueCredApi.get_credential_records()
+        else:
+            holderOffersRes = issueCredApi.get_credential_records(thid = thid)
+
+
         # Filter out the offers that are not in OfferReceived state
         holderOffers = [offer for offer in holderOffersRes.contents if offer.protocol_state == "OfferReceived"]
         
@@ -449,14 +523,20 @@ def get_credential(id: str = Path(..., description="Credential ID"), user_api_ke
 
 
 @app.get("/list-received-credentials/", tags=["User"])
-def list_received_credentials(user_api_key: str = Header(None)) -> List[IssueCredentialRecord]:
+def list_received_credentials(user_api_key: str = Header(None), thid: Optional[str] = Query(None, description="Thread ID (optional)")) -> List[IssueCredentialRecord]:
     client.set_default_header('apiKey', user_api_key)
 
     issueCredApi = IssueCredentialsProtocolApi(client)
 
     try:
         # List Holder Credentials
-        res = issueCredApi.get_credential_records()
+
+        res = None
+
+        if thid is None:
+            res = issueCredApi.get_credential_records()
+        else:
+            res = issueCredApi.get_credential_records(thid = thid)
 
         # Filter out the credentials that are not in CredentialReceived state
         credentials = [credential for credential in res.contents if credential.protocol_state == "CredentialReceived"]
@@ -493,13 +573,19 @@ async def create_presentation_request(connection_id: str, trusted_issuer_did: st
 
 
 @app.get("/list-presentation-requests/", tags=["User", "Brand"])
-async def list_presentation_requests(requestor_api_key: str = Header(None)) -> PresentationStatusPage:
+async def list_presentation_requests(requestor_api_key: str = Header(None), thid: Optional[str] = Query(None, description="Thread ID (optional)")) -> PresentationStatusPage:
     client.set_default_header('apiKey', requestor_api_key)
     
     presentationApi = swagger_client.PresentProofApi(client)
     
     try:
-        res = presentationApi.get_all_presentation()
+        res = None
+
+        if thid is None:
+            res = presentationApi.get_all_presentation()
+        else:
+            res = presentationApi.get_all_presentation(thid = thid)
+            
         return res
     except swagger_client.ApiException as e:
         logger.info(f"Exception when calling PresentProofApi->get_all_presentation: {e}")
@@ -515,7 +601,7 @@ async def get_presentation_request(id: str = Path(..., description="Presentation
     try:
         res = presentationApi.get_presentation(id)
         return res
-    except swagger_client.ApiException as e:
+    except Exception as e:
         logger.info(f"Exception when calling PresentProofApi->get_presentation: {e}")
         raise HTTPException(status_code=e.status, detail={"reason": e.reason})
     
